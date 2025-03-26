@@ -1,0 +1,419 @@
+/* Import the Bebas Neue font */
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap");
+
+/* body {
+  font-family: "Comfortaa", sans-serif;
+  background: rgb(63, 94, 251);
+  background: radial-gradient(
+    circle,
+    rgba(63, 94, 251, 1) 0%,
+    rgba(166, 32, 59, 1) 100%
+  );
+} */
+body {
+  font-family: "Comfortaa", sans-serif;
+  transition: background 0.5s ease;
+}
+.theme1 {
+  background: rgb(131, 58, 180);
+  background: radial-gradient(
+    circle,
+    rgb(142, 93, 175) 0%,
+    rgb(172, 54, 54) 52%,
+    rgba(252, 176, 69, 1) 100%
+  );
+}
+
+/* .theme2 {
+  background: rgb(89, 108, 73);
+  background: radial-gradient(
+    circle,
+    rgb(78, 29, 111) 0%,
+    rgb(56, 19, 19) 52%,
+    rgb(93, 83, 69) 100%
+  );
+} */
+.theme2 {
+  background: rgb(63, 143, 251);
+  background: radial-gradient(
+    circle,
+    rgba(63, 143, 251, 1) 0%,
+    rgba(208, 42, 42, 1) 100%
+  );
+}
+/* zenTheme{
+  fs
+} */
+h1 {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 10rem; /* Adjust the size as needed */
+  letter-spacing: 0.1rem;
+  color: #333; /* Change the color as needed */
+}
+
+h1 {
+  font-family: "Sixtyfour Convergence", sans-serif;
+  font-optical-sizing: auto;
+  color: #180606;
+  font-weight: 400;
+  font-size: 1rem;
+  font-style: normal;
+  /* font-variation-settings: "BLED" 0, "SCAN" 0, "XELA" 0, "YELA" 0; */
+}
+#video-title {
+  font-family: "Comfortaa", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  font-size: 1.5rem;
+  /* letter-spacing: 0.1rem; */
+}
+.header {
+  font-family: "Comfortaa", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  font-size: 4rem;
+  letter-spacing: 0.1rem;
+}
+.speedButton {
+  background-color: #028090;
+  font-family: "Comfortaa", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 50px;
+  text-align: center;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+#speed-control {
+  font-size: large;
+  color: #f3f3f3;
+}
+
+.SVGButton {
+  background-color: #028090;
+  /* color: white; */
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  /* width: 50px; */
+  text-align: center;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#waveform {
+  height: 10rem;
+}
+#controls {
+  margin-top: 20px;
+}
+#load-audio {
+  background-color: #028090;
+  font-family: "Comfortaa", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.4s ease;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
+  transition: box-shadow 0.4s ease;
+}
+
+#load-audio:hover {
+  background-color: #2980b9;
+  box-shadow: -2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+#play-pause {
+  background-color: #78967c;
+  font-family: "Comfortaa", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  color: rgb(255, 255, 255);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#play-pause:hover {
+  background-color: #12910d;
+}
+
+#loop {
+  background-color: #028090;
+  font-family: "Comfortaa", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#loop {
+  background-color: #2980b9;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+#zoom-range {
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: -2px 1px 0 rgba(0, 0, 0, 0.2); /* Box shadow to the top-left */
+}
+/* !Loader */
+.loader {
+  width: 4.8px;
+  height: 4.8px;
+  display: block;
+  margin: 20px auto;
+  position: relative;
+  border-radius: 4px;
+  color: #fff;
+  background: currentColor;
+  box-sizing: border-box;
+  animation: animloader 0.3s 0.3s linear infinite alternate;
+}
+.loader::after,
+.loader::before {
+  content: "";
+  box-sizing: border-box;
+  width: 4.8px;
+  height: 4.8px;
+  border-radius: 4px;
+  background: currentColor;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 15px;
+  animation: animloader 0.3s 0.45s linear infinite alternate;
+}
+.loader::after {
+  top: -15px;
+  animation-delay: 0s;
+}
+
+@keyframes animloader {
+  0% {
+    width: 4.8px;
+  }
+  100% {
+    width: 48px;
+  }
+}
+
+/* *PIANO ***************************************/
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+#piano-body {
+  /* background-color: #70350d; */
+  margin: 0;
+  min-height: 10vh;
+  justify-content: center;
+  align-items: center;
+  display: none; /* Default is hidden */
+}
+
+.piano {
+  display: flex;
+}
+
+#piano-body.show {
+  display: flex; /* Show piano when the 'show' class is added */
+}
+
+.key {
+  height: calc(var(--width) * 1.3);
+  width: var(--width);
+  border-radius: 8%;
+}
+
+.white {
+  --width: 60px;
+  background-color: white;
+  border: 1px solid #333;
+}
+
+.white.active {
+  background-color: #ccc;
+}
+
+.black {
+  --width: 30px;
+  background-color: black;
+  margin-left: calc(var(--width) / -2);
+  margin-right: calc(var(--width) / -2);
+  z-index: 2;
+}
+
+.black.active {
+  background-color: #333;
+}
+/************* FLyout menu ***********************/
+
+:root {
+  --button-background: rgb(228, 196, 18);
+  --button-color: rgb(204, 154, 154);
+  --dropdown-highlight: rgb(39, 32, 41);
+  --dropdown-width: 200px;
+  --dropdown-background: rgb(201, 184, 184);
+  --dropdown-color: black;
+}
+
+body {
+  /* display: flex;
+  justify-content: center;
+  align-items: center; */
+  /* min-height: 100vh; */
+  cursor: auto;
+  background-color: #222229;
+}
+
+/* Boring button styles */
+a.button {
+  /* Frame */
+  font-size: 1rem;
+  display: inline-block;
+  padding: 20px 28px;
+  border-radius: 50px;
+  box-sizing: border-box;
+
+  /* Style */
+  border: none;
+  background: var(--button-background);
+  color: var(--button-color);
+  font-size: 24px;
+  cursor: pointer;
+  transition: box-shadow 0.3s ease;
+}
+
+a.button:active {
+  filter: brightness(75%);
+}
+a.button:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Shadow on hover */
+}
+/* Dropdown styles */
+.dropdown {
+  font-size: 1rem;
+  position: relative;
+  padding: 0;
+  margin-right: 1em;
+  cursor: auto;
+  border: none;
+}
+
+.dropdown summary {
+  list-style: none;
+  list-style-type: none;
+}
+
+.dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dropdown summary:focus {
+  outline: none;
+}
+
+.dropdown summary:focus a.button {
+  border: 2px solid white;
+}
+
+.dropdown summary:focus {
+  outline: none;
+}
+
+.dropdown ul {
+  position: absolute;
+  margin: 20px 0 0 0;
+  padding: 20px 0;
+  width: var(--dropdown-width);
+  /* left: 80%; */
+  right: 0;
+  /* margin-left: calc((var(--dropdown-width) / 2) * -1); */
+  margin-left: 0;
+  box-sizing: border-box;
+  z-index: 2;
+
+  background: var(--dropdown-background);
+  border-radius: 6px;
+  list-style: none;
+}
+
+.dropdown ul li {
+  padding: 0;
+  margin: 0;
+}
+
+.dropdown ul li a:link,
+.dropdown ul li a:visited {
+  display: inline-block;
+  padding: 10px 0.8rem;
+  width: 100%;
+  box-sizing: border-box;
+
+  color: var(--dropdown-color);
+  text-decoration: none;
+}
+
+.dropdown ul li a:hover {
+  background-color: var(--dropdown-highlight);
+  color: var(--dropdown-background);
+}
+
+/* Dropdown triangle */
+.dropdown ul::before {
+  content: " ";
+  position: absolute;
+  width: 0;
+  height: 0;
+  top: -10px;
+  left: 90%;
+  margin-left: -10px;
+  border-style: solid;
+  border-width: 0 10px 10px 10px;
+  border-color: transparent transparent var(--dropdown-background) transparent;
+}
+
+/* Close the dropdown with outside clicks */
+.dropdown > summary::before {
+  display: none;
+}
+
+.dropdown[open] > summary::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+}
+.dropdown summary,
+.dropdown ul li a {
+  cursor: pointer; /* Cursor should be a pointer only for these elements */
+}
+/******* FLyout menu END ****************/

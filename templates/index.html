@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Jazz Transcription Web App</title>
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.ico') }}"
+      type="image/x-icon"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&family=Sixtyfour+Convergence&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+
+    <script src="https://unpkg.com/wavesurfer.js@6"></script>
+    <script src="https://unpkg.com/wavesurfer.js@6/dist/plugin/wavesurfer.timeline.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@6/dist/plugin/wavesurfer.regions.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.34/Tone.js"></script> -->
+    <!-- <script src="https://unpkg.com/tone"></script> -->
+
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+  </head>
+  <body class="theme1 bg-gray-700 text-gray-900 select-none">
+    <div class="container mx-auto p-8">
+      <div class="relative">
+        <div class="absolute top-0 right-0 ml-4">
+          <details class="dropdown">
+            <summary role="button">
+              <svg
+                class="button"
+                xmlns="http://www.w3.org/2000/svg"
+                width="40px"
+                height="40px"
+                viewBox="0 0 20 20"
+                fill="none"
+              >
+                <path
+                  fill="#000000"
+                  fill-rule="evenodd"
+                  d="M18 5a1 1 0 100-2H2a1 1 0 000 2h16zm-4 4a1 1 0 100-2H6a1 1 0 100 2h8zm5 3a1 1 0 01-1 1H2a1 1 0 110-2h16a1 1 0 011 1zm-5 5a1 1 0 100-2H6a1 1 0 100 2h8z"
+                />
+              </svg>
+            </summary>
+            <ul class="cursor-pointer">
+              <li>
+                <a href="#" id="theme-switcher" class="text-center"
+                  >Background</a
+                >
+              </li>
+              <li>
+                <a href="#" id="zen-mode" class="text-center">Focus Mode</a>
+              </li>
+              <li><a href="#" class="text-center">How to</a></li>
+              <li><a href="#" class="text-center">About</a></li>
+            </ul>
+          </details>
+        </div>
+
+        <div class="flex justify-center items-center mt-2 mb-16">
+          <img
+            src="static/images/icons8-audio-wave-100.png"
+            alt="Audio Wave Icon"
+            class="mr-4"
+            id="headerIcon"
+          />
+          <h1 id="headerText" class="header text-center">LoopTube</h1>
+        </div>
+      </div>
+
+      <div id="loading-zone">
+        <input
+          type="text"
+          id="youtube-url"
+          class="w-1/3 p-2 mb-4 border border-gray-300 rounded-lg"
+          placeholder="https://www.youtube.com/watch?v=gCARYHv6sdY"
+          value="https://www.youtube.com/watch?v=gCARYHv6sdY"
+        />
+        <div class="flex justify-between items-center w-full">
+          <button
+            id="load-audio"
+            class="text-white px-4 py-2 mt-2 rounded-lg hover:bg-blue-600"
+          >
+            Load Audio
+          </button>
+
+          <div
+            id="loading-indicator"
+            class="loader ml-[80px] mt-4"
+            style="display: none"
+          ></div>
+        </div>
+      </div>
+      <div
+        id="thumb-and-title-zone"
+        class="flex justify-between items-center w-full"
+      >
+        <div id="thumb-and-title-left" class="flex items-center">
+          <img
+            id="video-thumbnail"
+            src=""
+            alt="Video Thumbnail"
+            class="block max-w-[141px] mr-4"
+          />
+          <h2 id="video-title" class="text-xxl font-semibold"></h2>
+        </div>
+
+        <div class="flex space-x-2">
+          <button
+            id="addNewAudioButton"
+            class="text-white px-4 py-2 rounded-lg flex items-center"
+            title="Add different song"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="60px"
+              height="60px"
+              viewBox="0 0 24 24"
+              fill="none"
+              id="addnewAudioSVG"
+              class="SVGButton"
+            >
+              <path
+                d="M9.66088 8.53078C9.95402 8.23813 9.95442 7.76326 9.66178 7.47012C9.36913 7.17698 8.89426 7.17658 8.60112 7.46922L9.66088 8.53078ZM4.47012 11.5932C4.17698 11.8859 4.17658 12.3607 4.46922 12.6539C4.76187 12.947 5.23674 12.9474 5.52988 12.6548L4.47012 11.5932ZM5.51318 11.5771C5.21111 11.2936 4.73648 11.3088 4.45306 11.6108C4.16964 11.9129 4.18475 12.3875 4.48682 12.6709L5.51318 11.5771ZM8.61782 16.5469C8.91989 16.8304 9.39452 16.8152 9.67794 16.5132C9.96136 16.2111 9.94625 15.7365 9.64418 15.4531L8.61782 16.5469ZM5 11.374C4.58579 11.374 4.25 11.7098 4.25 12.124C4.25 12.5382 4.58579 12.874 5 12.874V11.374ZM15.37 12.124V12.874L15.3723 12.874L15.37 12.124ZM17.9326 13.1766L18.4614 12.6447V12.6447L17.9326 13.1766ZM18.25 15.7351C18.2511 16.1493 18.5879 16.4841 19.0021 16.483C19.4163 16.4819 19.7511 16.1451 19.75 15.7309L18.25 15.7351ZM8.60112 7.46922L4.47012 11.5932L5.52988 12.6548L9.66088 8.53078L8.60112 7.46922ZM4.48682 12.6709L8.61782 16.5469L9.64418 15.4531L5.51318 11.5771L4.48682 12.6709ZM5 12.874H15.37V11.374H5V12.874ZM15.3723 12.874C16.1333 12.8717 16.8641 13.1718 17.4038 13.7084L18.4614 12.6447C17.6395 11.8276 16.5267 11.3705 15.3677 11.374L15.3723 12.874ZM17.4038 13.7084C17.9435 14.245 18.2479 14.974 18.25 15.7351L19.75 15.7309C19.7468 14.572 19.2833 13.4618 18.4614 12.6447L17.4038 13.7084Z"
+                fill="#000000"
+              />
+            </svg>
+          </button>
+
+          <button
+            id="downloadAudioButton"
+            class="text-white py-2 rounded-lg flex items-center"
+            title="Download mp3"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="60px"
+              height="60px"
+              viewBox="0 0 24 24"
+              fill="none"
+              id="downloadAudioSVG"
+              class="SVGButton"
+            >
+              <path
+                d="M5.625 15C5.625 14.5858 5.28921 14.25 4.875 14.25C4.46079 14.25 4.125 14.5858 4.125 15H5.625ZM4.875 16H4.125H4.875ZM19.275 15C19.275 14.5858 18.9392 14.25 18.525 14.25C18.1108 14.25 17.775 14.5858 17.775 15H19.275ZM11.1086 15.5387C10.8539 15.8653 10.9121 16.3366 11.2387 16.5914C11.5653 16.8461 12.0366 16.7879 12.2914 16.4613L11.1086 15.5387ZM16.1914 11.4613C16.4461 11.1347 16.3879 10.6634 16.0613 10.4086C15.7347 10.1539 15.2634 10.2121 15.0086 10.5387L16.1914 11.4613ZM11.1086 16.4613C11.3634 16.7879 11.8347 16.8461 12.1613 16.5914C12.4879 16.3366 12.5461 15.8653 12.2914 15.5387L11.1086 16.4613ZM8.39138 10.5387C8.13662 10.2121 7.66533 10.1539 7.33873 10.4086C7.01212 10.6634 6.95387 11.1347 7.20862 11.4613L8.39138 10.5387ZM10.95 16C10.95 16.4142 11.2858 16.75 11.7 16.75C12.1142 16.75 12.45 16.4142 12.45 16H10.95ZM12.45 5C12.45 4.58579 12.1142 4.25 11.7 4.25C11.2858 4.25 10.95 4.58579 10.95 5H12.45ZM4.125 15V16H5.625V15H4.125ZM4.125 16C4.125 18.0531 5.75257 19.75 7.8 19.75V18.25C6.61657 18.25 5.625 17.2607 5.625 16H4.125ZM7.8 19.75H15.6V18.25H7.8V19.75ZM15.6 19.75C17.6474 19.75 19.275 18.0531 19.275 16H17.775C17.775 17.2607 16.7834 18.25 15.6 18.25V19.75ZM19.275 16V15H17.775V16H19.275ZM12.2914 16.4613L16.1914 11.4613L15.0086 10.5387L11.1086 15.5387L12.2914 16.4613ZM12.2914 15.5387L8.39138 10.5387L7.20862 11.4613L11.1086 16.4613L12.2914 15.5387ZM12.45 16V5H10.95V16H12.45Z"
+                fill="#000000"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="waveform" class="mt-8 bg-gray-200 rounded-lg">
+        <div id="wave-timeline" class="mt-8"></div>
+      </div>
+
+      <div id="controls" class="mt-4 flex space-x-8 items-center">
+        <button
+          id="play-pause"
+          class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+        >
+          <svg
+            id="playButton"
+            class="show mx-2 my-2"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            fill="#1e5026"
+            height="60px"
+            width="60px"
+            version="1.1"
+            id="Capa_1"
+            viewBox="0 0 512 512"
+            xml:space="preserve"
+          >
+            <path
+              d="M256,0C114.617,0,0,114.615,0,256s114.617,256,256,256s256-114.615,256-256S397.383,0,256,0z M344.48,269.57l-128,80  c-2.59,1.617-5.535,2.43-8.48,2.43c-2.668,0-5.34-0.664-7.758-2.008C195.156,347.172,192,341.82,192,336V176  c0-5.82,3.156-11.172,8.242-13.992c5.086-2.836,11.305-2.664,16.238,0.422l128,80c4.676,2.93,7.52,8.055,7.52,13.57  S349.156,266.641,344.48,269.57z"
+            />
+          </svg>
+          <svg
+            id="pauseButton"
+            class="hidden mx-2 my-2"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            fill="#664109"
+            height="60px"
+            width="60px"
+            version="1.1"
+            id="Capa_1"
+            viewBox="0 0 512 512"
+            xml:space="preserve"
+          >
+            <path
+              d="M256,0C114.617,0,0,114.615,0,256s114.617,256,256,256s256-114.615,256-256S397.383,0,256,0z M224,320  c0,8.836-7.164,16-16,16h-32c-8.836,0-16-7.164-16-16V192c0-8.836,7.164-16,16-16h32c8.836,0,16,7.164,16,16V320z M352,320  c0,8.836-7.164,16-16,16h-32c-8.836,0-16-7.164-16-16V192c0-8.836,7.164-16,16-16h32c8.836,0,16,7.164,16,16V320z"
+            />
+          </svg>
+        </button>
+        <button
+          id="loop"
+          class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
+        >
+          Loop Section
+        </button>
+
+        <!--! Speed Controls-->
+        <div
+          id="speed-control"
+          class="flex justify-center items-center space-x-4"
+        >
+          <span class="text-white">Speed</span>
+          <button id="decrease-speed" class="speedButton text-white rounded-lg">
+            -
+          </button>
+          <div id="speed-display" class="text-white text-lg">100%</div>
+          <button id="increase-speed" class="speedButton text-white rounded-lg">
+            +
+          </button>
+        </div>
+
+        <!--!Zoom Controls  -->
+        <div id="zoom-control" class="flex items-center space-x-4">
+          <label for="zoom-range" class="text-white">Zoom</label>
+          <input
+            id="zoom-range"
+            type="range"
+            min="0"
+            max="100"
+            value="0"
+            class="slider"
+            disabled
+          />
+          <div id="zoom-display" class="text-white text-lg">0%</div>
+        </div>
+        <!-- ! Pitch Controls -->
+        <div
+          id="pitch-control"
+          class="flex justify-center items-center space-x-4"
+        >
+          <span class="text-white">Pitch</span>
+          <button id="decrease-pitch" class="speedButton text-white rounded-lg">
+            -
+          </button>
+          <div id="pitch-display" class="text-white text-lg">0 st</div>
+          <button id="increase-pitch" class="speedButton text-white rounded-lg">
+            +
+          </button>
+        </div>
+
+        <!-- ! PIANO -->
+        <div class="ml-auto">
+          <button
+            id="showPianoButton"
+            class="text-white py-2 rounded-lg"
+            title="Show piano"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              class="SVGButton"
+              fill="#000000"
+              height="60px"
+              width="60px"
+              version="1.1"
+              id="Layer_1"
+              viewBox="0 0 512.004 512.004"
+              xml:space="preserve"
+            >
+              <g>
+                <g>
+                  <g>
+                    <path
+                      d="M512.004,205.136c0-39.526-32.033-71.569-71.569-71.569H273.094c7.692-13.31,22.065-22.261,38.563-22.261     c49.203,0,89.044-39.841,89.044-89.043c0-12.294-9.967-22.261-22.261-22.261c-12.294,0-22.261,9.967-22.261,22.261     c0,24.614-19.908,44.522-44.522,44.522c-41.515,0-76.365,28.364-86.242,66.783H71.573c-39.519,0-71.569,32.049-71.569,71.569     v106.518H0v159.9c0,22.334,18.114,40.448,40.448,40.448h431.104c22.334,0,40.448-18.114,40.448-40.448V334.091     c0-0.059,0.004-0.117,0.004-0.176V205.136z M44.526,205.136c0-14.931,12.116-27.047,27.047-27.047h368.863     c14.944,0,27.047,12.107,27.047,27.047v106.518H44.526V205.136z M467.478,467.48H44.522V356.176h22.265v66.783     c0,12.294,9.967,22.261,22.261,22.261c12.294,0,22.261-9.967,22.261-22.261v-66.783h22.261v66.783     c0,12.294,9.966,22.261,22.261,22.261c12.294,0,22.261-9.967,22.261-22.261v-66.783h22.261v66.783     c0,12.294,9.967,22.261,22.261,22.261s22.261-9.967,22.261-22.261v-66.783h22.261v66.783c0,12.294,9.967,22.261,22.261,22.261     c12.294,0,22.261-9.967,22.261-22.261v-66.783h22.261v66.783c0,12.294,9.967,22.261,22.261,22.261     c12.294,0,22.261-9.967,22.261-22.261v-66.783H400.7v66.783c0,12.294,9.966,22.261,22.261,22.261     c12.294,0,22.261-9.967,22.261-22.261v-66.783h22.256V467.48z"
+                    />
+                    <path
+                      d="M111.309,267.133h22.261c12.294,0,22.261-9.967,22.261-22.261s-9.967-22.261-22.261-22.261h-22.261     c-12.294,0-22.261,9.967-22.261,22.261S99.014,267.133,111.309,267.133z"
+                    />
+                    <path
+                      d="M356.178,267.133h22.261c12.294,0,22.261-9.967,22.261-22.261s-9.967-22.261-22.261-22.261h-22.261     c-12.294,0-22.261,9.967-22.261,22.261S343.884,267.133,356.178,267.133z"
+                    />
+                    <path
+                      d="M222.613,267.133h44.522c12.294,0,22.261-9.967,22.261-22.261s-9.966-22.261-22.261-22.261h-44.522     c-12.294,0-22.261,9.967-22.261,22.261S210.319,267.133,222.613,267.133z"
+                    />
+                  </g>
+                </g>
+              </g>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div
+        id="piano-body"
+        class="flex justify-center items-center min-h-screen"
+        hidden
+      >
+        <div class="piano">
+          <div data-note="C" class="key white"></div>
+          <div data-note="Db" class="key black"></div>
+          <div data-note="D" class="key white"></div>
+          <div data-note="Eb" class="key black"></div>
+          <div data-note="E" class="key white"></div>
+          <div data-note="F" class="key white"></div>
+          <div data-note="Gb" class="key black"></div>
+          <div data-note="G" class="key white"></div>
+          <div data-note="Ab" class="key black"></div>
+          <div data-note="A" class="key white"></div>
+          <div data-note="Bb" class="key black"></div>
+          <div data-note="B" class="key white"></div>
+        </div>
+
+        <audio id="C" src="./static/piano/C.mp3"></audio>
+        <audio id="Db" src="./static/piano/Db.mp3"></audio>
+        <audio id="D" src="./static/piano/D.mp3"></audio>
+        <audio id="Eb" src="./static/piano/Eb.mp3"></audio>
+        <audio id="E" src="./static/piano/E.mp3"></audio>
+        <audio id="F" src="./static/piano/F.mp3"></audio>
+        <audio id="Gb" src="./static/piano/Gb.mp3"></audio>
+        <audio id="G" src="./static/piano/G.mp3"></audio>
+        <audio id="Ab" src="./static/piano/Ab.mp3"></audio>
+        <audio id="A" src="./static/piano/A.mp3"></audio>
+        <audio id="Bb" src="./static/piano/Bb.mp3"></audio>
+        <audio id="B" src="./static/piano/B.mp3"></audio>
+      </div>
+    </div>
+  </body>
+</html>
