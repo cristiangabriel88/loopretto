@@ -54,25 +54,51 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("DOMContentLoaded", function () {
   const zenButton = document.getElementById("zen-mode");
 
-  zenButton.addEventListener("click", function () {
+  zenButton.addEventListener("click", function (event) {
+    event.preventDefault(); // Prevent default anchor behavior
+
     const docElm = document.documentElement;
-    if (docElm.requestFullscreen) {
-      docElm.requestFullscreen();
-    } else if (docElm.mozRequestFullScreen) {
-      // Firefox
-      docElm.mozRequestFullScreen();
-    } else if (docElm.webkitRequestFullscreen) {
-      // Chrome, Safari, Opera
-      docElm.webkitRequestFullscreen();
-    } else if (docElm.msRequestFullscreen) {
-      // IE/Edge
-      docElm.msRequestFullscreen();
+
+    if (
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    ) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    } else {
+      if (docElm.requestFullscreen) {
+        docElm.requestFullscreen();
+      } else if (docElm.mozRequestFullScreen) {
+        docElm.mozRequestFullScreen();
+      } else if (docElm.webkitRequestFullscreen) {
+        docElm.webkitRequestFullscreen();
+      } else if (docElm.msRequestFullscreen) {
+        docElm.msRequestFullscreen();
+      }
     }
-    if (fileIsLoaded) {
-      thumbAndTitleZone.classList.add("hidden");
+
+    // Blur so focus doesn't stay on menu item
+    document.activeElement.blur();
+  });
+
+  // Track fullscreen status
+  document.addEventListener("fullscreenchange", function () {
+    const zenButton = document.getElementById("zen-mode");
+    if (document.fullscreenElement) {
+      zenButton.classList.add("bg-yellow-400", "text-black");
+    } else {
+      zenButton.classList.remove("bg-yellow-400", "text-black");
     }
   });
-  document.activeElement.blur();
 });
 
 // Section end

@@ -14,7 +14,13 @@ body {
   font-family: "Comfortaa", sans-serif;
   transition: background 0.5s ease;
 }
+
 .theme1 {
+  /* background: rgb(23, 35, 49); */
+  background: rgb(25, 53, 73);
+}
+
+/* .theme1 {
   background: rgb(131, 58, 180);
   background: radial-gradient(
     circle,
@@ -22,7 +28,7 @@ body {
     rgb(172, 54, 54) 52%,
     rgba(252, 176, 69, 1) 100%
   );
-}
+} */
 
 /* .theme2 {
   background: rgb(89, 108, 73);
@@ -76,6 +82,14 @@ h1 {
   font-size: 4rem;
   letter-spacing: 0.1rem;
 }
+
+#headerIcon {
+  max-width: 400px;
+  height: auto;
+  margin: 0 20px;
+  position: absolute;
+}
+
 .speedButton {
   background-color: #028090;
   font-family: "Comfortaa", sans-serif;
@@ -322,6 +336,7 @@ a.button:hover {
   margin-right: 1em;
   cursor: auto;
   border: none;
+  z-index: 99;
 }
 
 .dropdown summary {
