@@ -51,6 +51,21 @@ document.addEventListener("DOMContentLoaded", function () {
   document.activeElement.blur();
 });
 
+downloadAudioButton.addEventListener("click", async () => {
+  const title = document.getElementById("video-title").textContent.trim();
+  const sanitizedTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+
+  const response = await fetch("/audio/audio.mp3");
+  const blob = await response.blob();
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${sanitizedTitle || "audio"}.mp3`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
 document.addEventListener("DOMContentLoaded", function () {
   const zenButton = document.getElementById("zen-mode");
 
