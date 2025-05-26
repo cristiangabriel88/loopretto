@@ -5,6 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>About Loopretto</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Favicon for most browsers -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="{{ url_for('static', filename='images/favicon/favicon-32x32.png') }}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="{{ url_for('static', filename='images/favicon/favicon-16x16.png') }}"
+    />
+    <link
+      rel="shortcut icon"
+      href="{{ url_for('static', filename='images/favicon/favicon.ico') }}"
+    />
+
+    <!-- Apple Touch Icon -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="{{ url_for('static', filename='images/favicon/apple-touch-icon.png') }}"
+    />
+
+    <!-- Android Chrome -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="{{ url_for('static', filename='images/favicon/android-chrome-192x192.png') }}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="{{ url_for('static', filename='images/favicon/android-chrome-512x512.png') }}"
+    />
+
+    <!-- Manifest for PWA support -->
+    <link
+      rel="manifest"
+      href="{{ url_for('static', filename='images/favicon/site.webmanifest') }}"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,7 +64,7 @@
   </head>
   <body class="text-white min-h-screen p-8">
     <div
-      class="max-w-6xl mx-auto bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-8 shadow-xl"
+      class="max-w-6xl mx-auto bg-white bg-opacity-10 backdrop-blur-md rounded-2xl px-8 py-4 shadow-xl"
     >
       <div class="flex justify-left items-center mb-2">
         <img
@@ -72,8 +116,8 @@
         >
           Cristian Gabriel
         </a>
-        — a musician and developer passionate about tools that make creative
-        work easier for myself and others.
+        — a musician and developer passionate about building tools that make
+        creative work easier — for myself and for others.
       </p>
       <p class="mt-2">
         Have feedback or ideas? Reach out at

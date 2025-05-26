@@ -5,10 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Loopretto</title>
+    <!-- Favicon for most browsers -->
     <link
       rel="icon"
-      href="{{ url_for('static', filename='favicon.ico') }}"
-      type="image/x-icon"
+      type="image/png"
+      sizes="32x32"
+      href="{{ url_for('static', filename='images/favicon/favicon-32x32.png') }}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="{{ url_for('static', filename='images/favicon/favicon-16x16.png') }}"
+    />
+    <link
+      rel="shortcut icon"
+      href="{{ url_for('static', filename='images/favicon/favicon.ico') }}"
+    />
+
+    <!-- Apple Touch Icon -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="{{ url_for('static', filename='images/favicon/apple-touch-icon.png') }}"
+    />
+
+    <!-- Android Chrome -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="{{ url_for('static', filename='images/favicon/android-chrome-192x192.png') }}"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="{{ url_for('static', filename='images/favicon/android-chrome-512x512.png') }}"
+    />
+
+    <!-- Manifest for PWA support -->
+    <link
+      rel="manifest"
+      href="{{ url_for('static', filename='images/favicon/site.webmanifest') }}"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -54,12 +93,12 @@
             </summary>
             <ul class="cursor-pointer">
               <li>
+                <a href="#" id="zen-mode" class="text-center">Focus Mode</a>
+              </li>
+              <li>
                 <a href="#" id="theme-switcher" class="text-center"
                   >Background</a
                 >
-              </li>
-              <li>
-                <a href="#" id="zen-mode" class="text-center">Focus Mode</a>
               </li>
               <li><a href="howto" class="text-center">How to</a></li>
               <li><a href="about" class="text-center">About</a></li>
@@ -118,7 +157,7 @@
           <button
             id="addNewAudioButton"
             class="text-white px-4 py-2 rounded-lg flex items-center"
-            title="Add different song"
+            title="Load a different song"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -163,104 +202,115 @@
         <div id="wave-timeline" class="mt-8"></div>
       </div>
 
-      <div id="controls" class="mt-4 flex space-x-8 items-center">
-        <button
-          id="play-pause"
-          class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-        >
-          <svg
-            id="playButton"
-            class="show mx-2 my-2"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            fill="#1e5026"
-            height="60px"
-            width="60px"
-            version="1.1"
-            id="Capa_1"
-            viewBox="0 0 512 512"
-            xml:space="preserve"
+      <div class="flex justify-between">
+        <div id="controls" class="mt-6 flex space-x-8 items-center">
+          <button
+            id="play-pause"
+            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
           >
-            <path
-              d="M256,0C114.617,0,0,114.615,0,256s114.617,256,256,256s256-114.615,256-256S397.383,0,256,0z M344.48,269.57l-128,80  c-2.59,1.617-5.535,2.43-8.48,2.43c-2.668,0-5.34-0.664-7.758-2.008C195.156,347.172,192,341.82,192,336V176  c0-5.82,3.156-11.172,8.242-13.992c5.086-2.836,11.305-2.664,16.238,0.422l128,80c4.676,2.93,7.52,8.055,7.52,13.57  S349.156,266.641,344.48,269.57z"
-            />
-          </svg>
-          <svg
-            id="pauseButton"
-            class="hidden mx-2 my-2"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink"
-            fill="#664109"
-            height="60px"
-            width="60px"
-            version="1.1"
-            id="Capa_1"
-            viewBox="0 0 512 512"
-            xml:space="preserve"
-          >
-            <path
-              d="M256,0C114.617,0,0,114.615,0,256s114.617,256,256,256s256-114.615,256-256S397.383,0,256,0z M224,320  c0,8.836-7.164,16-16,16h-32c-8.836,0-16-7.164-16-16V192c0-8.836,7.164-16,16-16h32c8.836,0,16,7.164,16,16V320z M352,320  c0,8.836-7.164,16-16,16h-32c-8.836,0-16-7.164-16-16V192c0-8.836,7.164-16,16-16h32c8.836,0,16,7.164,16,16V320z"
-            />
-          </svg>
-        </button>
-        <button
-          id="loop"
-          class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
-        >
-          Loop Section
-        </button>
-
-        <!--! Speed Controls-->
-        <div
-          id="speed-control"
-          class="flex justify-center items-center space-x-4"
-        >
-          <span class="text-white">Speed</span>
-          <button id="decrease-speed" class="speedButton text-white rounded-lg">
-            -
+            <svg
+              id="playButton"
+              class="show mx-2 my-2"
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              fill="#1e5026"
+              height="60px"
+              width="60px"
+              version="1.1"
+              id="Capa_1"
+              viewBox="0 0 512 512"
+              xml:space="preserve"
+            >
+              <path
+                d="M256,0C114.617,0,0,114.615,0,256s114.617,256,256,256s256-114.615,256-256S397.383,0,256,0z M344.48,269.57l-128,80  c-2.59,1.617-5.535,2.43-8.48,2.43c-2.668,0-5.34-0.664-7.758-2.008C195.156,347.172,192,341.82,192,336V176  c0-5.82,3.156-11.172,8.242-13.992c5.086-2.836,11.305-2.664,16.238,0.422l128,80c4.676,2.93,7.52,8.055,7.52,13.57  S349.156,266.641,344.48,269.57z"
+              />
+            </svg>
+            <svg
+              id="pauseButton"
+              class="hidden mx-2 my-2"
+              xmlns="http://www.w3.org/2000/svg"
+              xmlns:xlink="http://www.w3.org/1999/xlink"
+              fill="#664109"
+              height="60px"
+              width="60px"
+              version="1.1"
+              id="Capa_1"
+              viewBox="0 0 512 512"
+              xml:space="preserve"
+            >
+              <path
+                d="M256,0C114.617,0,0,114.615,0,256s114.617,256,256,256s256-114.615,256-256S397.383,0,256,0z M224,320  c0,8.836-7.164,16-16,16h-32c-8.836,0-16-7.164-16-16V192c0-8.836,7.164-16,16-16h32c8.836,0,16,7.164,16,16V320z M352,320  c0,8.836-7.164,16-16,16h-32c-8.836,0-16-7.164-16-16V192c0-8.836,7.164-16,16-16h32c8.836,0,16,7.164,16,16V320z"
+              />
+            </svg>
           </button>
-          <div id="speed-display" class="text-white text-lg w-16 text-center">
-            100%
+          <button id="loop" class="text-white px-4 py-2 rounded-lg">
+            Loop Section
+          </button>
+
+          <!--! Speed Controls-->
+          <div
+            id="speed-control"
+            class="flex justify-center items-center space-x-4"
+          >
+            <span class="text-white">Speed</span>
+            <button
+              id="decrease-speed"
+              class="speedButton text-white rounded-lg"
+            >
+              -
+            </button>
+            <div id="speed-display" class="text-white text-lg w-16 text-center">
+              100%
+            </div>
+            <button
+              id="increase-speed"
+              class="speedButton text-white rounded-lg"
+            >
+              +
+            </button>
           </div>
-          <button id="increase-speed" class="speedButton text-white rounded-lg">
-            +
-          </button>
-        </div>
 
-        <!--!Zoom Controls  -->
-        <div id="zoom-control" class="flex items-center space-x-4">
-          <label for="zoom-range" class="text-white">Zoom</label>
-          <input
-            id="zoom-range"
-            type="range"
-            min="0"
-            max="100"
-            value="0"
-            class="slider"
-            disabled
-          />
-          <div id="zoom-display" class="text-white text-lg">0%</div>
-        </div>
-        <!-- ! Pitch Controls -->
-        <div
-          id="pitch-control"
-          class="flex justify-center items-center space-x-4"
-        >
-          <span class="text-white">Pitch</span>
-          <button id="decrease-pitch" class="speedButton text-white rounded-lg">
-            -
-          </button>
-          <div id="pitch-display" class="text-white text-lg">0 st</div>
-          <button id="increase-pitch" class="speedButton text-white rounded-lg">
-            +
-          </button>
-        </div>
+          <!--!Zoom Controls  -->
+          <div id="zoom-control" class="flex items-center space-x-4">
+            <label for="zoom-range" class="text-white">Zoom</label>
+            <input
+              id="zoom-range"
+              type="range"
+              min="0"
+              max="100"
+              value="0"
+              class="slider"
+              disabled
+            />
+            <div id="zoom-display" class="text-white text-lg">0%</div>
+          </div>
+          <!-- ! Pitch Controls -->
+          <!-- <div
+            id="pitch-control"
+            class="flex justify-center items-center space-x-4"
+          >
+            <span class="text-white">Pitch</span>
+            <button
+              id="decrease-pitch"
+              class="speedButton text-white rounded-lg"
+            >
+              -
+            </button>
+            <div id="pitch-display" class="text-white text-lg">0 st</div>
+            <button
+              id="increase-pitch"
+              class="speedButton text-white rounded-lg"
+            >
+              +
+            </button>
+          </div> -->
 
-        <!-- ! PIANO -->
-        <div class="ml-auto cursor-default">
+          <!-- ! PIANO -->
+        </div>
+        <div class="cursor-default mt-6">
           <button
             id="showPianoButton"
-            class="text-white py-2 rounded-lg cursor-default"
+            class="text-white pt-2 rounded-lg cursor-default"
             title="Show piano"
           >
             <svg
@@ -333,7 +383,7 @@
     </div>
   </body>
 
-  <div class="flex justify-center mt-6">
+  <div class="flex justify-center mt-4">
     <a href="https://ko-fi.com/cristian_gabriel/?amount=5" target="_blank">
       <img
         height="40"

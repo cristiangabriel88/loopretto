@@ -90,6 +90,21 @@ h1 {
   position: absolute;
 }
 
+#loop {
+  background-color: #028090;
+  font-family: "Comfortaa", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 800;
+  font-style: normal;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .speedButton {
   background-color: #028090;
   font-family: "Comfortaa", sans-serif;
@@ -170,25 +185,6 @@ h1 {
   background-color: #12910d;
 }
 
-#loop {
-  background-color: #028090;
-  font-family: "Comfortaa", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 800;
-  font-style: normal;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-#loop {
-  background-color: #2980b9;
-  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.2);
-}
 #zoom-range {
   border-radius: 8px; /* Rounded corners */
   box-shadow: -2px 1px 0 rgba(0, 0, 0, 0.2); /* Box shadow to the top-left */
