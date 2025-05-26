@@ -32,10 +32,10 @@
     <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
   </head>
   <body class="theme1 bg-gray-700 text-gray-900 select-none">
-    <div class="container mx-auto p-8">
+    <div class="container mx-auto p-8" id="mainContainer">
       <div class="relative">
         <div class="absolute top-0 right-0 -mt-6 ml-4">
-          <details class="dropdown">
+          <details class="dropdown" id="dropdownMenu">
             <summary role="button">
               <svg
                 class="button"
@@ -62,7 +62,7 @@
                 <a href="#" id="zen-mode" class="text-center">Focus Mode</a>
               </li>
               <li><a href="#" class="text-center">How to</a></li>
-              <li><a href="#" class="text-center">About</a></li>
+              <li><a href="about" class="text-center">About</a></li>
             </ul>
           </details>
         </div>
@@ -257,10 +257,10 @@
         </div>
 
         <!-- ! PIANO -->
-        <div class="ml-auto">
+        <div class="ml-auto cursor-default">
           <button
             id="showPianoButton"
-            class="text-white py-2 rounded-lg"
+            class="text-white py-2 rounded-lg cursor-default"
             title="Show piano"
           >
             <svg
@@ -332,4 +332,15 @@
       </div>
     </div>
   </body>
+
+  <div class="flex justify-center mt-6">
+    <a href="https://ko-fi.com/cristian_gabriel/?amount=5" target="_blank">
+      <img
+        height="40"
+        style="border: 0px; height: 40px"
+        src="https://storage.ko-fi.com/cdn/kofi5.png"
+        alt="Buy Me a Coffee at ko-fi.com"
+      />
+    </a>
+  </div>
 </html>

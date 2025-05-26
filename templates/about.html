@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About Loopretto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Comfortaa", cursive;
+        background: rgb(25, 53, 73);
+      }
+    </style>
+  </head>
+  <body class="text-white min-h-screen p-8">
+    <div
+      class="max-w-3xl mx-auto bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-8 shadow-xl"
+    >
+      <div class="flex justify-left items-center mb-6">
+        <img
+          src="{{ url_for('static', filename='images/transparent-icon.png') }}"
+          alt="Loopretto Icon"
+          class="w-24 h-24"
+        />
+        <h1 class="text-5xl font-bold text-white ml-2">About Loopretto</h1>
+      </div>
+
+      <p class="text-lg mb-6 text-gray-100 leading-relaxed">
+        <strong>Loopretto</strong> is a sleek and simple web app designed for
+        musicians and curious ears. Just drop in a YouTube link, and Loopretto
+        extracts the audio, giving you an intuitive, distraction-free space to
+        zoom in, loop sections, slow down playback, download the song and even
+        jam along using the built-in piano.
+      </p>
+
+      <p class="text-lg mb-6 text-gray-100 leading-relaxed">
+        Whether you're transcribing a jazz solo, studying tricky licks, or just
+        looping a beat for fun — Loopretto helps you
+        <em>hear more and guess less</em>.
+      </p>
+
+      <h2 class="text-3xl font-semibold mb-4 mt-8 text-white">Key Features</h2>
+      <ul class="list-disc list-inside text-gray-100 space-y-2">
+        <li>🎧 Extracts high-quality audio from any YouTube video</li>
+        <li>🔁 Set loop regions with ease</li>
+        <li>🐢 Slow down or speed up playback without losing pitch</li>
+        <li>🎹 Virtual piano for pitch matching and reference</li>
+        <li>🌙 Zen mode for fullscreen, focused listening</li>
+        <li>🎨 Custom themes to match your vibe</li>
+      </ul>
+
+      <p class="text-lg mt-6 text-gray-100 leading-relaxed">
+        Loopretto runs right in your browser — no installations, no ads, no
+        clutter. Just music and tools that help you learn by ear — better and
+        faster.
+      </p>
+    </div>
+    <div class="mt-8 text-center">
+      <a
+        href="/"
+        class="inline-block bg-[#028090] text-white font-bold px-6 py-3 rounded-lg shadow-md hover:bg-[#2980b9] transition duration-300"
+      >
+        ← Back to App
+      </a>
+    </div>
+  </body>
+</html>

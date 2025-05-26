@@ -11,6 +11,7 @@ const pitchUpButton = document.getElementById("increase-pitch");
 const addNewAudioButton = document.getElementById("addNewAudioButton");
 const downloadAudioButton = document.getElementById("downloadAudioButton");
 const showPianoButton = document.getElementById("showPianoButton");
+const mainContainer = document.getElementById("mainContainer");
 
 let fileIsLoaded = false;
 let masterClickTime = null;
@@ -70,7 +71,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const zenButton = document.getElementById("zen-mode");
 
   zenButton.addEventListener("click", function (event) {
-    event.preventDefault(); // Prevent default anchor behavior
+    event.preventDefault();
 
     const docElm = document.documentElement;
 
@@ -109,9 +110,13 @@ document.addEventListener("DOMContentLoaded", function () {
   document.addEventListener("fullscreenchange", function () {
     const zenButton = document.getElementById("zen-mode");
     if (document.fullscreenElement) {
-      zenButton.classList.add("bg-yellow-400", "text-black");
+      zenButton.classList.add("bg-blue-400", "text-black");
+      mainContainer.classList.add("mt-16");
+      document.getElementById("dropdownMenu").removeAttribute("open");
     } else {
-      zenButton.classList.remove("bg-yellow-400", "text-black");
+      zenButton.classList.remove("bg-blue-400", "text-black");
+      mainContainer.classList.remove("mt-16");
+      document.getElementById("dropdownMenu").removeAttribute("open");
     }
   });
 });
@@ -128,6 +133,7 @@ function checkFileIfLoaded() {
     playButton.disabled = true;
     loopButton.disabled = true;
     zoomSlider.disabled = true;
+    showPianoButton.disabled = true;
   }
   if (fileIsLoaded === true) {
     speedDownButton.disabled = false;
@@ -138,6 +144,7 @@ function checkFileIfLoaded() {
     playButton.disabled = false;
     loopButton.disabled = false;
     zoomSlider.disabled = false;
+    showPianoButton.disabled = false;
   }
 }
 

@@ -20,7 +20,7 @@ body {
   background: rgb(25, 53, 73);
 }
 
-/* .theme1 {
+.theme2 {
   background: rgb(131, 58, 180);
   background: radial-gradient(
     circle,
@@ -28,7 +28,7 @@ body {
     rgb(172, 54, 54) 52%,
     rgba(252, 176, 69, 1) 100%
   );
-} */
+}
 
 /* .theme2 {
   background: rgb(89, 108, 73);
@@ -39,14 +39,14 @@ body {
     rgb(93, 83, 69) 100%
   );
 } */
-.theme2 {
+/* .theme2 {
   background: rgb(63, 143, 251);
   background: radial-gradient(
     circle,
     rgba(63, 143, 251, 1) 0%,
     rgba(208, 42, 42, 1) 100%
   );
-}
+} */
 /* zenTheme{
   fs
 } */
