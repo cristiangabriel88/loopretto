@@ -13,6 +13,10 @@ app = Flask(__name__, static_folder='static')
 def index():
     return render_template('index.html')
 
+@app.route('/howto')
+def howto():
+    return render_template('howto.html')
+
 @app.route('/about')
 def about():
     return render_template('about.html')
