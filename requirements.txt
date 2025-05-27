@@ -1,5 +1,8 @@
-Flask==2.3.2
-yt-dlp==2023.7.6
-gunicorn==21.2.0  # If you plan to deploy with Gunicorn (optional for local dev)
-waveform-data==1.5.0  # Optional, if you use specific waveform generation packages
-# pip install flask-socketio yt-dlp eventlet
+Flask>=2.3.3,<3.0
+yt-dlp>=2024.05.26
+gunicorn>=21.2.1
+waveform-data>=1.5.0
+
+# Optional: used for WebSocket support
+flask-socketio>=5.3.6
+eventlet>=0.33.3
