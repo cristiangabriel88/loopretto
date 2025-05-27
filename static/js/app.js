@@ -18,6 +18,7 @@ let masterClickTime = null;
 let masterLoopStartTime = null;
 let masterLoopEndTime = null;
 let masterLoopRegion = null;
+let loopStart = null;
 let currentZoom = 0;
 
 const thumbAndTitleZone = document.getElementById("thumb-and-title-zone");
@@ -248,8 +249,8 @@ loopButton.addEventListener("click", () => {
     loopStart = masterClickTime;
     loopEnd = masterLoopEndTime;
 
-    // Change button text and color back to "Set Loop"
-    loopButton.textContent = "Set Loop";
+    // Change button text and color back to "Loop Section"
+    loopButton.textContent = "Loop Section";
     loopButton.style.backgroundColor = "#028090"; // Original color
   } else if (loopStart !== null) {
     // Create a loop region if none exists
@@ -294,7 +295,6 @@ function togglePlayPause() {
 
 //! Add spacebar event for play/pause and seek to loopStart
 document.body.onkeyup = function (e) {
-  // togglePlayPause();
   if (e.keyCode == 32) {
     if (wavesurfer.isPlaying()) {
       wavesurfer.pause();
@@ -310,12 +310,13 @@ document.body.onkeyup = function (e) {
         wavesurfer.play(loopStart);
         isPaused = false;
         togglePlayPause();
-        if (player.state === "started") {
-          player.stop();
-        } else {
-          player.start();
-        }
+        // if (player.state === "started") {
+        //   player.stop();
+        // } else {
+        //   player.start();
+        // }
       } else if (loopStart == null && isPaused) {
+        loopStart = 0;
         wavesurfer.play();
         isPaused = false;
         togglePlayPause();
@@ -325,11 +326,6 @@ document.body.onkeyup = function (e) {
       }
     }
   }
-  // } else {
-  //   wavesurfer.play();
-  //   isPaused = false;
-  //   togglePlayPause();
-  // }
 };
 
 document.getElementById("play-pause").addEventListener("click", () => {
@@ -343,6 +339,25 @@ document.getElementById("play-pause").addEventListener("click", () => {
     togglePlayPause();
   }
   document.activeElement.blur();
+});
+
+document.addEventListener("keydown", function (e) {
+  if (!fileIsLoaded) return;
+
+  const currentTime = wavesurfer.getCurrentTime();
+  const duration = wavesurfer.getDuration();
+
+  if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    const newTime = Math.max(0, currentTime - 0.5);
+    wavesurfer.setCurrentTime(newTime);
+  }
+
+  if (e.key === "ArrowRight") {
+    e.preventDefault();
+    const newTime = Math.min(duration, currentTime + 0.5);
+    wavesurfer.setCurrentTime(newTime);
+  }
 });
 
 //* Speed control ///////////////////////////////

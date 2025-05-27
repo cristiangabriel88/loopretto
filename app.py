@@ -4,8 +4,6 @@ import os
 
 app = Flask(__name__, static_folder='static')
 
-
-# Serve the HTML file
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -18,14 +16,6 @@ def howto():
 def about():
     return render_template('about.html')
 
-# Hook function to report download progress
-def progress_hook(d):
-    if d['status'] == 'downloading':
-        downloaded_bytes = d.get('downloaded_bytes', 0)
-        total_bytes = d.get('total_bytes', 1)  # Prevent division by zero
-        progress = int(downloaded_bytes / total_bytes * 100)
-        socketio.emit('download_progress', {'progress': progress})
-
 @app.route('/get_audio', methods=['POST'])
 def get_audio():
     data = request.get_json()
@@ -37,7 +27,6 @@ def get_audio():
     if os.path.exists('audio.mp3'):
         os.remove('audio.mp3')
 
-    # Extract audio and metadata using youtube_dl with a progress hook
     ydl_opts = {
     'format': 'bestaudio/best',
     'postprocessors': [{
