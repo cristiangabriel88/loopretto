@@ -417,7 +417,7 @@ document.getElementById("waveform").addEventListener("wheel", (e) => {
 //* Function to update zoom based on the slider input
 document.getElementById("zoom-range").addEventListener("input", (event) => {
   currentZoom = Math.max(0, Math.min(100, event.target.value)); // Limit zoom between 10% and 100%
-  wavesurfer.zoom(currentZoom * 5); // Scale the zoom for visibility
+  wavesurfer.zoom(currentZoom * 2.5); // Scale the zoom for visibility
   updateZoomSlider(currentZoom);
   document.activeElement.blur();
 });
