@@ -6,8 +6,8 @@ const loopButton = document.getElementById("loop");
 const zoomSlider = document.getElementById("zoom-range");
 const speedDownButton = document.getElementById("decrease-speed");
 const speedUpButton = document.getElementById("increase-speed");
-const pitchDownButton = document.getElementById("decrease-pitch");
-const pitchUpButton = document.getElementById("increase-pitch");
+// const pitchDownButton = document.getElementById("decrease-pitch");
+// const pitchUpButton = document.getElementById("increase-pitch");
 const addNewAudioButton = document.getElementById("addNewAudioButton");
 const downloadAudioButton = document.getElementById("downloadAudioButton");
 const showPianoButton = document.getElementById("showPianoButton");
@@ -127,8 +127,8 @@ function checkFileIfLoaded() {
   if (fileIsLoaded === false) {
     speedDownButton.disabled = true;
     speedUpButton.disabled = true;
-    pitchDownButton.disabled = true;
-    pitchUpButton.disabled = true;
+    // pitchDownButton.disabled = true;
+    // pitchUpButton.disabled = true;
     playPauseButton.disabled = true;
     playButton.disabled = true;
     loopButton.disabled = true;
@@ -138,8 +138,8 @@ function checkFileIfLoaded() {
   if (fileIsLoaded === true) {
     speedDownButton.disabled = false;
     speedUpButton.disabled = false;
-    pitchDownButton.disabled = false;
-    pitchUpButton.disabled = false;
+    // pitchDownButton.disabled = false;
+    // pitchUpButton.disabled = false;
     playPauseButton.disabled = false;
     playButton.disabled = false;
     loopButton.disabled = false;

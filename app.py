@@ -3,10 +3,10 @@ from flask_socketio import SocketIO, emit
 import yt_dlp as youtube_dl
 import os
 
-app = Flask(__name__)
-socketio = SocketIO(app)
 
 app = Flask(__name__, static_folder='static')
+
+socketio = SocketIO(app)
 
 # Serve the HTML file
 @app.route('/')
