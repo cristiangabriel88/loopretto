@@ -1,12 +1,9 @@
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
-from flask_socketio import SocketIO, emit
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import yt_dlp as youtube_dl
 import os
 
-
 app = Flask(__name__, static_folder='static')
 
-socketio = SocketIO(app)
 
 # Serve the HTML file
 @app.route('/')
@@ -48,7 +45,6 @@ def get_audio():
         'preferredcodec': 'mp3',
         'preferredquality': '192',
     }],
-    'progress_hooks': [progress_hook],
     'outtmpl': 'audio.%(ext)s',
     'noplaylist': True,
     'writethumbnail': False,  # Do not download thumbnails
@@ -76,4 +72,4 @@ def download_file(filename):
     return send_from_directory(directory='.', path=filename)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    app.run(debug=True)
