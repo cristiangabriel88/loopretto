@@ -24,37 +24,35 @@ def get_audio():
     if not youtube_url:
         return jsonify({'error': 'No URL provided'}), 400
 
-    if os.path.exists('audio.mp3'):
-        os.remove('audio.mp3')
+    # Remove previous file if it exists
+    for ext in ['m4a', 'webm', 'mp3', 'opus']:
+        try:
+            os.remove(f'audio.{ext}')
+        except FileNotFoundError:
+            pass
 
     ydl_opts = {
-    'format': 'bestaudio/best',
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    'outtmpl': 'audio.%(ext)s',
-    'noplaylist': True,
-    'writethumbnail': False,  # Do not download thumbnails
-    'writeinfojson': False,   # Do not write metadata as JSON
-    'writesubtitles': False,  # Do not download subtitles
-    'nocheckcertificate': True,  # Skip certificate checks for faster downloads
-    'quiet': True,  # Suppress non-error messages
-    'no_warnings': True,  # Suppress warnings
+        'format': 'bestaudio[ext=m4a]/bestaudio',
+        'outtmpl': 'audio.%(ext)s',
+        'noplaylist': True,
+        'quiet': True,
+        'no_warnings': True,
     }
 
     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(youtube_url, download=True)
-    
+
     video_title = info.get('title', 'Unknown Title')
     thumbnail_url = info.get('thumbnail', '')
+    ext = info.get('ext', 'm4a')  # fallback just in case
+    filename = f'audio.{ext}'
 
     return jsonify({
         'title': video_title,
         'thumbnail': thumbnail_url,
-        'audio_file': 'audio.mp3'
+        'audio_file': filename
     })
+
 
 @app.route('/audio/<filename>')
 def download_file(filename):

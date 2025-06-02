@@ -1,128 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>How to Use Loopretto</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Favicon for most browsers -->
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="{{ url_for('static', filename='images/favicon/favicon-32x32.png') }}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="{{ url_for('static', filename='images/favicon/favicon-16x16.png') }}"
-    />
-    <link
-      rel="shortcut icon"
-      href="{{ url_for('static', filename='images/favicon/favicon.ico') }}"
-    />
 
-    <!-- Apple Touch Icon -->
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="{{ url_for('static', filename='images/favicon/apple-touch-icon.png') }}"
-    />
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>How to Use Loopretto</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<!-- Favicon for most browsers -->
+	<link rel="icon" type="image/png" sizes="32x32"
+		href="{{ url_for('static', filename='images/favicon/favicon-32x32.png') }}" />
+	<link rel="icon" type="image/png" sizes="16x16"
+		href="{{ url_for('static', filename='images/favicon/favicon-16x16.png') }}" />
+	<link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon/favicon.ico') }}" />
 
-    <!-- Android Chrome -->
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="192x192"
-      href="{{ url_for('static', filename='images/favicon/android-chrome-192x192.png') }}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="512x512"
-      href="{{ url_for('static', filename='images/favicon/android-chrome-512x512.png') }}"
-    />
+	<!-- Apple Touch Icon -->
+	<link rel="apple-touch-icon" sizes="180x180"
+		href="{{ url_for('static', filename='images/favicon/apple-touch-icon.png') }}" />
 
-    <!-- Manifest for PWA support -->
-    <link
-      rel="manifest"
-      href="{{ url_for('static', filename='images/favicon/site.webmanifest') }}"
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      body {
-        font-family: "Comfortaa", cursive;
-        background: rgb(25, 53, 73);
-      }
-    </style>
-  </head>
-  <body class="text-white min-h-screen p-8">
-    <div
-      class="max-w-6xl mx-auto bg-white bg-opacity-10 backdrop-blur-md rounded-2xl px-8 py-4 shadow-xl"
-    >
-      <div class="flex justify-left items-center mb-6">
-        <img
-          src="{{ url_for('static', filename='images/transparent-icon.png') }}"
-          alt="Loopretto Icon"
-          class="w-24 h-24"
-        />
-        <h1 class="text-5xl font-bold text-white ml-2">How to Use Loopretto</h1>
-      </div>
+	<!-- Android Chrome -->
+	<link rel="icon" type="image/png" sizes="192x192"
+		href="{{ url_for('static', filename='images/favicon/android-chrome-192x192.png') }}" />
+	<link rel="icon" type="image/png" sizes="512x512"
+		href="{{ url_for('static', filename='images/favicon/android-chrome-512x512.png') }}" />
 
-      <!-- <h2 class="text-3xl font-semibold mb-4 mt-8 text-white">Key Features</h2> -->
-      <ul class="text-lg list-disc list-inside text-gray-100 space-y-2">
-        <li>
-          🎧 Paste a YouTube URL in the input field and click
-          <strong>Load Audio</strong>.
-        </li>
-        <li>
-          🔊 Click anywhere on the waveform to set a start point. Then press the
-          Spacebar to play. Press the Spacebar again to pause and come back to
-          the place you clicked at initially.
-        </li>
-        <li>
-          🔁 Click anywhere on the waveform to set a start point. Then click
-          <strong>Loop section</strong> to loop a segment and use the mouse to
-          drag the ends of the segment.
-        </li>
-        <li>
-          ⏩ Use the <strong>speed controls</strong> to slow down or speed up
-          playback.
-        </li>
-        <li>
-          🎹 Toggle the <strong>Piano view</strong> to find notes by ear. You
-          can play it with your keyboard: Z to M for white keys, and S, D, G, H,
-          J for black keys.
-        </li>
-        <li>
-          📥 You can <strong>download the audio</strong> using the download
-          button.
-        </li>
-        <li>
-          🧠 Activate <strong>Focus Mode</strong> for a fullscreen transcription
-          session.
-        </li>
-      </ul>
+	<!-- Manifest for PWA support -->
+	<link rel="manifest" href="{{ url_for('static', filename='images/favicon/site.webmanifest') }}" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap" rel="stylesheet" />
+	<style>
+		body {
+			font-family: "Comfortaa", cursive;
+			background: rgb(25, 53, 73);
+		}
+	</style>
+</head>
 
-      <p class="text-lg mt-6 text-gray-100 leading-relaxed">
-        Loopretto runs right in your browser — no installations, no ads, no
-        clutter. Just music and tools that help you learn by ear — better and
-        faster.
-      </p>
-    </div>
-    <div class="mt-8 text-center">
-      <a
-        href="/"
-        class="inline-block bg-[#028090] text-white font-bold px-6 py-3 rounded-lg shadow-md hover:bg-[#2980b9] transition duration-300"
-      >
-        ← Back to App
-      </a>
-    </div>
-  </body>
+<body class="text-white min-h-screen p-8">
+	<div class="max-w-6xl mx-auto bg-white bg-opacity-10 backdrop-blur-md rounded-2xl px-8 py-4 shadow-xl">
+		<div class="flex justify-left items-center mb-6">
+			<img src="{{ url_for('static', filename='images/transparent-icon.png') }}" alt="Loopretto Icon"
+				class="w-24 h-24" />
+			<h1 class="text-5xl font-bold text-white ml-2">How to Use Loopretto</h1>
+		</div>
+
+		<!-- <h2 class="text-3xl font-semibold mb-4 mt-8 text-white">Key Features</h2> -->
+		<ul class="text-lg list-disc list-inside text-gray-100 space-y-2">
+			<li>
+				🎧 Paste a YouTube URL in the input field and click
+				<strong>Load Audio</strong>.
+			</li>
+			<li>
+				🔊 Click anywhere on the waveform to set a start point. Then press the
+				<strong>Spacebar</strong> to play. Press the <strong>Spacebar</strong> again to pause and return to the
+				clicked point.
+				Move left <strong>←</strong> and right <strong>→</strong> with the arrow keys.
+			</li>
+
+			<li>
+				🔁 Click anywhere on the waveform to set a start point. Then click
+				<strong>Loop section</strong> to loop a segment and use the mouse to
+				drag the ends of the segment.
+			</li>
+			<li>
+				⏩ Use the <strong>speed controls</strong> to slow down or speed up
+				playback.
+			</li>
+			<li>
+				🎹 Toggle the <strong>Piano view</strong> to find notes by ear. You
+				can play it with your keyboard: Z to M for white keys, and S, D, G, H,
+				J for black keys.
+			</li>
+			<li>
+				📥 You can <strong>download the audio</strong> using the download
+				button.
+			</li>
+			<li>
+				🧠 Activate <strong>Focus Mode</strong> for a fullscreen transcription
+				session.
+			</li>
+		</ul>
+
+		<p class="text-lg mt-6 text-gray-100 leading-relaxed">
+			Loopretto runs right in your browser — no installations, no ads, no
+			clutter. Just music and tools that help you learn by ear — better and
+			faster.
+		</p>
+	</div>
+	<div class="mt-8 text-center">
+		<a href="/"
+			class="inline-block bg-[#028090] text-white font-bold px-6 py-3 rounded-lg shadow-md hover:bg-[#2980b9] transition duration-300">
+			← Back to App
+		</a>
+	</div>
+</body>
+
 </html>

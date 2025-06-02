@@ -53,16 +53,22 @@ document.addEventListener("DOMContentLoaded", function () {
   document.activeElement.blur();
 });
 
+let audioFile = "";
+
 downloadAudioButton.addEventListener("click", async () => {
   const title = document.getElementById("video-title").textContent.trim();
   const sanitizedTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
 
-  const response = await fetch("/audio/audio.mp3");
-  const blob = await response.blob();
+  const audioResponse = await fetch(`/audio/${audioFile}`);
+  const blob = await audioResponse.blob();
 
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `${sanitizedTitle || "audio"}.mp3`;
+
+  // Extract extension from filename (e.g., "audio.m4a" → ".m4a")
+  const ext = audioFile.split(".").pop();
+  a.download = `${sanitizedTitle || "audio"}.${ext}`;
+
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -176,14 +182,17 @@ document.getElementById("load-audio").addEventListener("click", async () => {
   if (response.ok) {
     const data = await response.json();
 
+    audioFile = data.audio_file;
+
     document.getElementById("video-title").textContent = data.title;
     document.getElementById("video-thumbnail").src = data.thumbnail;
 
-    const audioResponse = await fetch("/audio/audio.mp3");
+    const audioResponse = await fetch(`/audio/${audioFile}`);
     const audioBlob = await audioResponse.blob();
 
     let audioUrl = URL.createObjectURL(audioBlob);
     wavesurfer.load(audioUrl);
+
     fileIsLoaded = true;
 
     document.getElementById("loading-zone").hidden = true;
@@ -473,6 +482,7 @@ showPianoButton.addEventListener("click", function () {
   } else {
     pianoBody.classList.add("show");
   }
+  showPianoButton.blur();
 });
 //* Pitch controls ###########################################################
 // Initialize the current pitch in semitones
