@@ -14,14 +14,21 @@ def piped_proxy(video_id):
     for base_url in piped_instances:
         try:
             url = f"{base_url}/streams/{video_id}"
+            print(f"Trying: {url}")
             response = requests.get(url, timeout=10)
-            data = response.json()
+            response.raise_for_status()  # Raises HTTPError for bad responses
 
+            data = response.json()
             if data.get("audioStreams"):
+                print(f"✅ Success from {base_url}")
                 return jsonify(data)
+            else:
+                print(f"⚠️ No audio streams from {base_url}")
         except Exception as e:
+            print(f"❌ Failed from {base_url}: {e}")
             continue
 
+    print("❌ All piped instances failed.")
     return jsonify({"error": "No audio streams available"}), 500
 
 @app.route('/')
