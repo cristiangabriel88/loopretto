@@ -15,7 +15,8 @@ limiter = Limiter(
         "3 per minute",
         "10 per hour",
         "20 per day"
-    ]
+    ],
+    storage_uri="memory://"
 )
 limiter.init_app(app)
 
