@@ -177,7 +177,9 @@ document.getElementById("load-audio").addEventListener("click", async () => {
   }
 
   try {
-    const res = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
+    const pipedAPI = `https://pipedapi.kavin.rocks/streams/${videoId}`;
+    const proxy = "https://corsproxy.io/?";
+    const res = await fetch(`${proxy}${encodeURIComponent(pipedAPI)}`);
     const data = await res.json();
 
     const title = data.title || "Unknown";
