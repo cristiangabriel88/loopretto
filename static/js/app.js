@@ -177,9 +177,7 @@ document.getElementById("load-audio").addEventListener("click", async () => {
   }
 
   try {
-    const pipedAPI = `https://pipedapi.kavin.rocks/streams/${videoId}`;
-    const proxy = "https://api.allorigins.win/raw?url=";
-    const res = await fetch(`${proxy}${encodeURIComponent(pipedAPI)}`);
+    const res = await fetch(`/piped/${videoId}`);
     const data = await res.json();
 
     const title = data.title || "Unknown";
