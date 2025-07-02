@@ -55,24 +55,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
 let audioFile = "";
 
-downloadAudioButton.addEventListener("click", async () => {
-  const title = document.getElementById("video-title").textContent.trim();
-  const sanitizedTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+// downloadAudioButton.addEventListener("click", async () => {
+//   const title = document.getElementById("video-title").textContent.trim();
+//   const sanitizedTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
 
-  const audioResponse = await fetch(`/audio/${audioFile}`);
-  const blob = await audioResponse.blob();
+//   const audioResponse = await fetch(`/audio/${audioFile}`);
+//   const blob = await audioResponse.blob();
 
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
+//   const a = document.createElement("a");
+//   a.href = URL.createObjectURL(blob);
 
-  // Extract extension from filename (e.g., "audio.m4a" → ".m4a")
-  const ext = audioFile.split(".").pop();
-  a.download = `${sanitizedTitle || "audio"}.${ext}`;
+//   // Extract extension from filename (e.g., "audio.m4a" → ".m4a")
+//   const ext = audioFile.split(".").pop();
+//   a.download = `${sanitizedTitle || "audio"}.${ext}`;
 
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-});
+//   document.body.appendChild(a);
+//   a.click();
+//   document.body.removeChild(a);
+// });
 
 document.addEventListener("DOMContentLoaded", function () {
   const zenButton = document.getElementById("zen-mode");
@@ -165,48 +165,52 @@ checkFileIfLoaded();
 
 document.getElementById("load-audio").addEventListener("click", async () => {
   checkFileIfLoaded();
-  document.getElementById("loading-indicator").style.display = "block"; // Show loading
-  document.getElementById("load-audio").style.backgroundColor = "gray";
-  document.getElementById("load-audio").style.cursor = "not-allowed";
-  document.getElementById("load-audio").disabled = true; // Disable the button functionality
-  let youtubeUrl = document.getElementById("youtube-url").value;
+  document.getElementById("loading-indicator").style.display = "block";
+  const url = document.getElementById("youtube-url").value.trim();
 
-  const response = await fetch("/get_audio", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ url: youtubeUrl }),
-  });
+  const match = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?]+)/);
+  const videoId = match ? match[1] : null;
 
-  if (response.ok) {
-    const data = await response.json();
+  if (!videoId) {
+    alert("Invalid YouTube URL");
+    return;
+  }
 
-    audioFile = data.audio_file;
+  try {
+    const res = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
+    const data = await res.json();
 
-    document.getElementById("video-title").textContent = data.title;
-    document.getElementById("video-thumbnail").src = data.thumbnail;
+    const title = data.title || "Unknown";
+    const thumbnail = data.thumbnailUrl || "";
+    const audioStreams = data.audioStreams || [];
 
-    const audioResponse = await fetch(`/audio/${audioFile}`);
-    const audioBlob = await audioResponse.blob();
+    if (!audioStreams.length) throw new Error("No audio streams available");
 
-    let audioUrl = URL.createObjectURL(audioBlob);
+    const stream =
+      audioStreams.find((a) => a.mimeType.includes("audio/mp4")) ||
+      audioStreams[0];
+    const audioUrl = stream.url;
+
+    document.getElementById("video-title").textContent = title;
+    document.getElementById("video-thumbnail").src = thumbnail;
+
     wavesurfer.load(audioUrl);
-
     fileIsLoaded = true;
 
     document.getElementById("loading-zone").hidden = true;
     document.getElementById("thumb-and-title-zone").classList.remove("hidden");
-  } else {
+
+    // Store stream URL for optional download
+    window.currentAudioUrl = audioUrl;
+    window.currentAudioTitle = title;
+  } catch (err) {
+    console.error(err);
     alert("Failed to load audio");
     fileIsLoaded = false;
+  } finally {
+    document.getElementById("loading-indicator").style.display = "none";
+    checkFileIfLoaded();
   }
-
-  document.getElementById("load-audio").style.backgroundColor = "#028090";
-  document.getElementById("load-audio").style.cursor = "pointer";
-  document.getElementById("load-audio").disabled = false;
-  document.getElementById("loading-indicator").style.display = "none";
-  checkFileIfLoaded();
 });
 
 let wavesurfer = WaveSurfer.create({
