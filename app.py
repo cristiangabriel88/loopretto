@@ -6,6 +6,13 @@ import threading
 import os
 import re
 
+# Use the ffmpeg bundled via imageio-ffmpeg so end users don't have to install it.
+try:
+    import imageio_ffmpeg
+    FFMPEG_LOCATION = imageio_ffmpeg.get_ffmpeg_exe()
+except Exception:
+    FFMPEG_LOCATION = None
+
 app = Flask(__name__, static_folder='static')
 
 # Rate limiter: 5 requests per minute per IP
@@ -73,6 +80,8 @@ def get_audio():
         'download_sections': ['*00:00:00-00:10:00'],  # Limit to 10 min
         'max_filesize': 30 * 1024 * 1024,  # 30MB max
     }
+    if FFMPEG_LOCATION:
+        ydl_opts['ffmpeg_location'] = FFMPEG_LOCATION
 
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
@@ -114,6 +123,5 @@ def download_file(filename):
 
 
 if __name__ == '__main__':
-    # app.run(debug=True)
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
 

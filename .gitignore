@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Downloaded audio (created at runtime)
+audio.m4a
+audio.webm
+audio.mp3
+audio.opus
+audio.webp
+audio.info.json
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Node (tailwind build artifacts)
+node_modules/
