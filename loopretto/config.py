@@ -7,9 +7,7 @@ from __future__ import annotations
 
 import os
 
-# Repo root (parent of this package). Used as the default audio directory so
-# downloads and the /audio route resolve to the same place regardless of cwd.
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from . import paths
 
 
 def _int_env(name: str, default: int) -> int:
@@ -33,8 +31,9 @@ class Config:
     MAX_FILESIZE_BYTES: int = _int_env("MAX_FILESIZE_MB", 30) * 1024 * 1024
 
     # Where yt-dlp writes the extracted audio. A single working file is reused;
-    # the previous one is removed before each new download.
-    AUDIO_DIR: str = os.environ.get("AUDIO_DIR", _PROJECT_ROOT)
+    # the previous one is removed before each new download. Defaults to the repo
+    # root from source, or a per-user temp dir from a frozen build (see paths.py).
+    AUDIO_DIR: str = os.environ.get("AUDIO_DIR", paths.working_dir())
     AUDIO_BASENAME: str = "audio"
 
     # --- Practice journal export (local-only file write) ---

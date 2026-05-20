@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -19,6 +20,13 @@ try:
     import imageio_ffmpeg
 
     FFMPEG_LOCATION: Optional[str] = imageio_ffmpeg.get_ffmpeg_exe()
+    # In a frozen macOS/Linux build, PyInstaller bundles ffmpeg as a data file
+    # and may strip its executable bit; restore it so yt-dlp can run it.
+    if FFMPEG_LOCATION and getattr(sys, "frozen", False) and os.name != "nt":
+        try:
+            os.chmod(FFMPEG_LOCATION, 0o755)
+        except OSError:
+            pass
 except Exception:
     FFMPEG_LOCATION = None
 

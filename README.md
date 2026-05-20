@@ -6,7 +6,28 @@ It runs locally on your computer. No account, no upload, no cloud.
 
 ---
 
-## Easiest way to run it (Windows)
+## Download (no Python needed)
+
+The easiest way to get Loopretto is a ready-made download - **no Python install, no setup**.
+
+**→ [Get the latest release](https://github.com/cristiangabriel88/loopretto/releases/latest)**
+
+On the Releases page, pick the one for your computer:
+
+| Your computer | Download | How to run |
+| --- | --- | --- |
+| **Windows** | `Loopretto-windows.zip` | Unzip it, then double-click **`Loopretto.exe`** inside the folder. |
+| **Mac** | `Loopretto-macos.zip` | Unzip it to get **`Loopretto.app`**, then **right-click it → Open** the first time (it's unsigned, so a plain double-click is blocked once). |
+
+Either way, your browser launches at `http://localhost:5000`. Paste a YouTube link and start looping. To stop the app, close its window (Windows) or quit it from the Dock (Mac).
+
+> The Mac app is unsigned, so the first launch needs **right-click → Open** (or **System Settings → Privacy & Security → Open Anyway**). After that, double-click works normally.
+
+If you'd rather run it from the source code instead, follow the steps below.
+
+---
+
+## Run from source (Windows)
 
 ### Step 1 - Install Python (one time, only if you do not have it)
 
@@ -85,7 +106,7 @@ Then open http://localhost:5000 in your browser.
 The audio is fetched from YouTube directly to your computer. The web page itself is served from your own machine.
 
 **Where is the song file saved?**
-In the project folder as `audio.m4a` (or similar). It stays there until you load another song, which replaces it. Nothing is uploaded anywhere.
+When run from source, in the project folder as `audio.m4a` (or similar); the downloadable app keeps it in a temporary folder instead. Either way it's a single working file that stays until you load another song, which replaces it. Nothing is uploaded anywhere.
 
 **Can I host this online so other people can use it?**
 No - and it is not meant to be. Run from a server, YouTube blocks the download with a "confirm you're not a bot" check, so it only works on a personal computer. That is the whole idea: Loopretto is a local tool, just for you.
@@ -95,3 +116,14 @@ Close the black window, then double-click `run.bat` again. If it still does not 
 
 **Can I change the port?**
 Yes. Set the `PORT` environment variable before launching. On Windows you can edit `run.bat` and add `set PORT=8080` near the top.
+
+---
+
+## Building the downloadable apps (for maintainers)
+
+The Releases downloads are built with [PyInstaller](https://pyinstaller.org/) from this repo. Build on the matching OS (you can't cross-build a Mac app from Windows or vice versa):
+
+- **Windows:** double-click or run **`build.bat`** → produces `dist\Loopretto\Loopretto.exe` and `dist\Loopretto-windows.zip`.
+- **Mac:** run **`./build.sh`** → produces `dist/Loopretto.app` and `dist/Loopretto-macos.zip`.
+
+Both scripts reuse the project's `.venv`, install `pyinstaller` + `pillow`, generate the app icon from the logo (`scripts/make_icons.py` → `build/loopretto.ico` / `.icns`), then run the shared `loopretto.spec`. Upload the resulting `*.zip` to a new [GitHub Release](https://github.com/cristiangabriel88/loopretto/releases). The `build/` and `dist/` folders are git-ignored.

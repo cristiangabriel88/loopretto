@@ -26,6 +26,10 @@ Thumbs.db
 # Node (legacy tailwind build artifacts)
 node_modules/
 
+# PyInstaller build output + generated icons (see build.bat / build.sh)
+build/
+dist/
+
 # Stray run logs
 app.err
 app.out

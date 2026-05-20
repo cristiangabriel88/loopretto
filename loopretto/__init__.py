@@ -10,14 +10,16 @@ import os
 
 from flask import Flask
 
+from . import paths
 from .config import Config
 from .extensions import limiter
 from .routes.audio import audio as audio_bp
 from .routes.journal import journal as journal_bp
 from .routes.pages import pages as pages_bp
 
-# Templates and static assets live at the repo root, not inside the package.
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Templates and static assets live at the repo root (or, in a frozen build, the
+# bundle's extraction dir) - not inside the package. See paths.resource_dir().
+_ROOT = paths.resource_dir()
 
 
 def create_app(config: type[Config] = Config) -> Flask:
