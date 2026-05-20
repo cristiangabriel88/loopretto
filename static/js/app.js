@@ -1157,8 +1157,12 @@ downloadAudioButton.addEventListener("click", () => {
       .replace(/\.+$/, "") // no trailing dots (Windows)
       || "audio";
     const ext = audioFile.split(".").pop();
-    a.href = `/audio/${audioFile}?t=${Date.now()}`;
-    a.download = `${safeTitle}.${ext}`;
+    const dlName = `${safeTitle}.${ext}`;
+    // Pass the name to the server so it sends Content-Disposition: attachment
+    // with the title — a same-origin <a download> alone is overridden by the
+    // server's default disposition. The attribute stays as a fallback.
+    a.href = `/audio/${audioFile}?download=${encodeURIComponent(dlName)}`;
+    a.download = dlName;
   }
   document.body.appendChild(a);
   a.click();

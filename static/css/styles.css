@@ -1659,6 +1659,17 @@ body.minimal-start .suggested { display: none; }
 .timer-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .label-sep { margin-left: 6px; }
 
+/* Pomodoro Focus / Break steppers: stacked rows, labels + steppers aligned */
+.pomo-steppers { flex-direction: column; gap: 10px; flex-wrap: nowrap; align-items: center; }
+.pomo-step-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.pomo-step-group .label { width: 44px; text-align: left; }
+.pomo-step-group .stepper { display: flex; align-items: center; gap: 10px; }
+
 /* Loop reps + Memorize share one block */
 .pb-pair { flex-direction: row; gap: 14px; }
 .pb-pair-half { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }

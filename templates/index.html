@@ -630,15 +630,23 @@
 							<span class="pstat-lbl" id="pomo-status">focus &middot; #0</span>
 						</div>
 					</div>
-					<div class="practice-row">
-						<span class="label">Focus</span>
-						<button class="stepper-btn" id="pomo-focus-down" aria-label="Shorter focus">-</button>
-						<span class="stepper-value"><span id="pomo-focus">25</span> min</span>
-						<button class="stepper-btn" id="pomo-focus-up" aria-label="Longer focus">+</button>
-						<span class="label label-sep">Break</span>
-						<button class="stepper-btn" id="pomo-break-down" aria-label="Shorter break">-</button>
-						<span class="stepper-value"><span id="pomo-break">5</span> min</span>
-						<button class="stepper-btn" id="pomo-break-up" aria-label="Longer break">+</button>
+					<div class="practice-row pomo-steppers">
+						<div class="pomo-step-group">
+							<span class="label">Focus</span>
+							<div class="stepper">
+								<button class="stepper-btn" id="pomo-focus-down" aria-label="Shorter focus">-</button>
+								<span class="stepper-value"><span id="pomo-focus">25</span> min</span>
+								<button class="stepper-btn" id="pomo-focus-up" aria-label="Longer focus">+</button>
+							</div>
+						</div>
+						<div class="pomo-step-group">
+							<span class="label">Break</span>
+							<div class="stepper">
+								<button class="stepper-btn" id="pomo-break-down" aria-label="Shorter break">-</button>
+								<span class="stepper-value"><span id="pomo-break">5</span> min</span>
+								<button class="stepper-btn" id="pomo-break-up" aria-label="Longer break">+</button>
+							</div>
+						</div>
 					</div>
 				</div>
 

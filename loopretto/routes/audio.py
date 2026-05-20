@@ -47,11 +47,31 @@ def serve_audio(filename: str) -> Response | tuple[str, int]:
     if not storage.is_valid_audio_filename(filename):
         return "Not found", 404
 
+    # ?download=<name> turns the response into an attachment named after the
+    # video title. Playback requests omit it, so streaming stays inline. The
+    # download name must override the on-disk filename here: a same-origin <a
+    # download> attribute is ignored when the server sends Content-Disposition.
+    download_name = _sanitize_download_name(request.args.get("download"))
+
     # conditional=True enables HTTP range requests for streaming/seeking.
     # max_age=0 + no-store: the filename is reused across tracks, so it must
     # never be cached (the global static cache is a year; see config).
     response = send_from_directory(
-        Config.AUDIO_DIR, filename, conditional=True, max_age=0
+        Config.AUDIO_DIR,
+        filename,
+        conditional=True,
+        max_age=0,
+        as_attachment=bool(download_name),
+        download_name=download_name or None,
     )
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+def _sanitize_download_name(name: str | None) -> str:
+    """Strip path separators and control chars from a client-supplied download
+    name (Werkzeug already handles header-safe encoding). Returns "" if empty."""
+    if not name:
+        return ""
+    cleaned = "".join(ch for ch in name if ch >= " " and ch not in '<>:"/\\|?*')
+    return cleaned.strip().rstrip(".")[:200]
