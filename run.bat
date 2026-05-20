@@ -50,7 +50,7 @@ echo Keep this window open while you use the app.
 echo Close this window to stop the app.
 echo.
 
-start "" http://localhost:5000
+REM The browser tab is opened by app.py once the server is ready.
 .venv\Scripts\python.exe app.py
 
 pause

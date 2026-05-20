@@ -24,27 +24,39 @@
 	<!-- Fonts -->
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<!-- Only the weights the CSS actually uses: Space Grotesk 500/600/700,
+	     DM Sans 400/500/600/700, JetBrains Mono 400/500. -->
 	<link
-		href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
 		rel="stylesheet" />
 
 	<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 
-	<script src="https://unpkg.com/wavesurfer.js@6"></script>
-	<script src="https://unpkg.com/wavesurfer.js@6/dist/plugin/wavesurfer.timeline.min.js"></script>
-	<script src="https://unpkg.com/wavesurfer.js@6/dist/plugin/wavesurfer.regions.min.js"></script>
+	<!-- WaveSurfer is vendored locally (pinned 7.12.7) so the app needs no CDN
+	     at launch and works offline after the first track is cached. -->
+	<script src="{{ url_for('static', filename='js/vendor/wavesurfer.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/vendor/wavesurfer.timeline.min.js') }}"></script>
+	<script src="{{ url_for('static', filename='js/vendor/wavesurfer.regions.min.js') }}"></script>
 
+	<script src="{{ url_for('static', filename='js/pitch-shifter.js') }}" defer></script>
+	<script src="{{ url_for('static', filename='js/pitch-detect.js') }}" defer></script>
+	<script src="{{ url_for('static', filename='js/metronome.js') }}" defer></script>
+	<script src="{{ url_for('static', filename='js/practice.js') }}" defer></script>
+	<script src="{{ url_for('static', filename='js/audio-export.js') }}" defer></script>
+	<script src="{{ url_for('static', filename='js/tempo.js') }}" defer></script>
+	<script src="{{ url_for('static', filename='js/setlists.js') }}" defer></script>
 	<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
 </head>
 
-<body class="theme-midnight">
+<body class="theme-dim">
 	<div class="app-shell" id="mainContainer">
 
 		<!-- Top bar -->
 		<div class="topbar">
 			<a class="brand" href="#">
-				<img class="brand-icon" id="headerIcon"
-					src="{{ url_for('static', filename='images/loopretto-inline-transparent-logo.png') }}"
+				<img class="brand-icon on-dark" src="{{ url_for('static', filename='images/logo-mark-light.png') }}"
+					alt="Loopretto" />
+				<img class="brand-icon on-light" src="{{ url_for('static', filename='images/logo-mark.png') }}"
 					alt="Loopretto" />
 			</a>
 			<div class="top-actions">
@@ -52,6 +64,8 @@
 					<kbd>Space</kbd> play
 					<span style="opacity:0.5">·</span>
 					<kbd>&larr;</kbd><kbd>&rarr;</kbd> nudge
+					<span style="opacity:0.5">·</span>
+					<kbd>?</kbd> shortcuts
 				</div>
 				<div class="menu-wrap">
 					<button class="icon-btn" id="menuToggle" aria-label="Menu">
@@ -60,13 +74,141 @@
 							<path d="M4 7h16M4 12h16M4 17h12" />
 						</svg>
 					</button>
-					<div class="menu-panel" id="menuPanel">
-						<div class="menu-item" id="zen-mode">Focus mode <span class="meta">F</span></div>
-						<div class="menu-item" id="theme-switcher">Background <span class="meta"
-								id="themeName">Midnight</span></div>
+					<div class="menu-panel" id="menuPanel" role="menu">
+						<button class="menu-item" id="zen-mode" type="button" role="menuitemcheckbox"
+							aria-checked="false">
+							<span class="menu-ic">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+									stroke-linecap="round" stroke-linejoin="round">
+									<path d="M8 3H5a2 2 0 0 0-2 2v3" />
+									<path d="M16 3h3a2 2 0 0 1 2 2v3" />
+									<path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+									<path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+								</svg>
+							</span>
+							<span class="menu-txt">Focus mode</span>
+							<span class="menu-switch" aria-hidden="true"></span>
+						</button>
+
+						<button class="menu-item" id="minimal-toggle" type="button" role="menuitemcheckbox"
+							aria-checked="false">
+							<span class="menu-ic">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+									stroke-linecap="round" stroke-linejoin="round">
+									<path d="M9.88 9.88a3 3 0 0 0 4.24 4.24" />
+									<path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68" />
+									<path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61" />
+									<path d="M2 2l20 20" />
+								</svg>
+							</span>
+							<span class="menu-txt">Minimal start screen</span>
+							<span class="menu-switch" aria-hidden="true"></span>
+						</button>
+
 						<div class="menu-sep"></div>
-						<a class="menu-item" href="howto">How to use</a>
-						<a class="menu-item" href="about">About Loopretto</a>
+
+						<div class="menu-section">
+							<div class="menu-section-label">Theme</div>
+							<div class="theme-grid" id="theme-grid">
+								<button class="theme-opt" type="button" data-theme="theme-light"
+									aria-label="Light theme">
+									<span class="theme-swatch preview-light"></span>
+									<span class="theme-opt-label">Light</span>
+								</button>
+								<button class="theme-opt" type="button" data-theme="theme-dim" aria-label="Dim theme">
+									<span class="theme-swatch preview-dim"></span>
+									<span class="theme-opt-label">Dim</span>
+								</button>
+								<button class="theme-opt" type="button" data-theme="theme-dark" aria-label="Dark theme">
+									<span class="theme-swatch preview-dark"></span>
+									<span class="theme-opt-label">Dark</span>
+								</button>
+							</div>
+						</div>
+
+						<div class="menu-section">
+							<div class="menu-section-label">Accent</div>
+							<div class="accent-row" id="accent-row">
+								<button class="accent-dot" type="button" aria-label="Violet"
+									data-accent="oklch(0.66 0.1 290)" style="--c:oklch(0.66 0.1 290)"></button>
+								<button class="accent-dot" type="button" aria-label="Indigo"
+									data-accent="oklch(0.63 0.09 264)" style="--c:oklch(0.63 0.09 264)"></button>
+								<button class="accent-dot" type="button" aria-label="Teal"
+									data-accent="oklch(0.7 0.08 205)" style="--c:oklch(0.7 0.08 205)"></button>
+								<button class="accent-dot" type="button" aria-label="Sage"
+									data-accent="oklch(0.7 0.09 155)" style="--c:oklch(0.7 0.09 155)"></button>
+								<button class="accent-dot" type="button" aria-label="Amber"
+									data-accent="oklch(0.74 0.09 78)" style="--c:oklch(0.74 0.09 78)"></button>
+								<button class="accent-dot" type="button" aria-label="Clay"
+									data-accent="oklch(0.66 0.11 32)" style="--c:oklch(0.66 0.11 32)"></button>
+								<button class="accent-dot" type="button" aria-label="Rose"
+									data-accent="oklch(0.66 0.11 350)" style="--c:oklch(0.66 0.11 350)"></button>
+							</div>
+						</div>
+
+						<div class="menu-section">
+							<div class="menu-section-label">Background</div>
+							<div class="bg-row" id="bg-row">
+								<button class="bg-dot bg-default" type="button" aria-label="Default background"
+									data-bg="default" title="Theme default"></button>
+								<button class="bg-dot" type="button" aria-label="Slate"
+									data-bg="280 0.012" style="--c:oklch(0.5 0.03 280)"></button>
+								<button class="bg-dot" type="button" aria-label="Indigo"
+									data-bg="264 0.04" style="--c:oklch(0.5 0.07 264)"></button>
+								<button class="bg-dot" type="button" aria-label="Ocean"
+									data-bg="225 0.04" style="--c:oklch(0.5 0.07 225)"></button>
+								<button class="bg-dot" type="button" aria-label="Forest"
+									data-bg="155 0.038" style="--c:oklch(0.5 0.07 155)"></button>
+								<button class="bg-dot" type="button" aria-label="Sand"
+									data-bg="78 0.04" style="--c:oklch(0.55 0.07 78)"></button>
+								<button class="bg-dot" type="button" aria-label="Clay"
+									data-bg="32 0.045" style="--c:oklch(0.52 0.08 32)"></button>
+							</div>
+						</div>
+
+						<div class="menu-section">
+							<div class="menu-section-label">Containers</div>
+							<div class="surface-row" id="surface-row">
+								<button class="surface-dot surface-default" type="button" aria-label="Default containers"
+									data-surface="default" title="Theme default"></button>
+								<button class="surface-dot" type="button" aria-label="Slate"
+									data-surface="282 0.04" style="--c:oklch(0.46 0.05 282)"></button>
+								<button class="surface-dot" type="button" aria-label="Indigo"
+									data-surface="264 0.05" style="--c:oklch(0.46 0.07 264)"></button>
+								<button class="surface-dot" type="button" aria-label="Ocean"
+									data-surface="225 0.05" style="--c:oklch(0.46 0.07 225)"></button>
+								<button class="surface-dot" type="button" aria-label="Forest"
+									data-surface="155 0.045" style="--c:oklch(0.47 0.07 155)"></button>
+								<button class="surface-dot" type="button" aria-label="Sand"
+									data-surface="78 0.05" style="--c:oklch(0.5 0.07 78)"></button>
+								<button class="surface-dot" type="button" aria-label="Plum"
+									data-surface="330 0.05" style="--c:oklch(0.48 0.08 330)"></button>
+							</div>
+						</div>
+
+						<div class="menu-sep"></div>
+
+						<a class="menu-item" href="howto">
+							<span class="menu-ic">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+									stroke-linecap="round" stroke-linejoin="round">
+									<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+									<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+								</svg>
+							</span>
+							<span class="menu-txt">How to use</span>
+						</a>
+						<a class="menu-item" href="about">
+							<span class="menu-ic">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+									stroke-linecap="round" stroke-linejoin="round">
+									<circle cx="12" cy="12" r="9" />
+									<path d="M12 16v-4" />
+									<path d="M12 8h.01" />
+								</svg>
+							</span>
+							<span class="menu-txt">About Loopretto</span>
+						</a>
 					</div>
 					<div class="menu-scrim" id="menuScrim"></div>
 				</div>
@@ -77,9 +219,22 @@
 		<div class="loading-zone" id="loading-zone">
 			<span class="eyebrow">Practice · Loop · Learn by ear</span>
 			<h1 class="tagline">
-				Drop a YouTube link &mdash; loop any phrase, slow it down, and learn it
-				<em>by feel</em>.
+				Drop a YouTube, SoundCloud or Bandcamp link and loop it, slow it down, and learn it
+				<em>by ear</em>.
 			</h1>
+
+			<!-- Resume last session -->
+			<div class="resume-banner" id="resume-banner" style="display:none">
+				<div class="resume-text">
+					<span class="resume-label">Resume where you left off</span>
+					<span class="resume-title" id="resume-title"></span>
+				</div>
+				<div class="resume-actions">
+					<button type="button" class="btn-primary" id="resume-btn">Resume</button>
+					<button type="button" class="linkish" id="resume-dismiss">Dismiss</button>
+				</div>
+			</div>
+
 			<form class="url-form" id="url-form">
 				<span class="yt-icon">
 					<svg viewBox="0 0 24 24" fill="none">
@@ -88,8 +243,8 @@
 					</svg>
 				</span>
 				<input class="url-input" type="text" id="youtube-url"
-					placeholder="https://www.youtube.com/watch?v=..."
-					value="https://www.youtube.com/watch?v=gCARYHv6sdY" spellcheck="false" autocomplete="off" />
+					placeholder="Paste a YouTube, SoundCloud, Bandcamp or direct audio URL…"
+					spellcheck="false" autocomplete="off" />
 				<button class="btn-primary" type="submit" id="load-audio">
 					<span class="spinner" id="loading-indicator" style="display:none"></span>
 					<span id="load-audio-label">Load audio</span>
@@ -100,12 +255,33 @@
 				<button type="button" class="chip" data-url="https://youtube.com/watch?v=mGQLXRTl3Z0">
 					<span class="dot"></span> Bach &mdash; Cello Suite No. 1
 				</button>
-				<button type="button" class="chip" data-url="https://youtube.com/watch?v=bx1Bh8ZvH84">
-					<span class="dot"></span> Wonderwall (Acoustic)
+				<button type="button" class="chip" data-url="https://youtube.com/watch?v=kHInwkOJm24">
+					<span class="dot"></span> Stevie Wonder &mdash; Isn't She Lovely
 				</button>
 				<button type="button" class="chip" data-url="https://youtube.com/watch?v=gCARYHv6sdY">
 					<span class="dot"></span> Autumn Leaves &mdash; Jam Track
 				</button>
+			</div>
+
+			<div class="drop-hint" id="drop-zone">
+				<input type="file" id="file-input" accept="audio/*,video/*" hidden />
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+					stroke-linejoin="round">
+					<path d="M12 16V4" />
+					<path d="M7 9l5-5 5 5" />
+					<path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+				</svg>
+				<span>or <button type="button" class="linkish" id="file-pick">choose an audio file</button> &mdash;
+					drag &amp; drop one here</span>
+			</div>
+
+			<!-- Setlists -->
+			<div class="setlists" id="setlists" style="display:none">
+				<div class="setlists-head">
+					<span class="setlists-title">Your setlists</span>
+					<button type="button" class="linkish" id="setlist-new">+ New setlist</button>
+				</div>
+				<div class="setlists-body" id="setlists-body"></div>
 			</div>
 		</div>
 
@@ -119,24 +295,51 @@
 					<h2 class="video-title" id="video-title">Untitled track</h2>
 					<div class="video-sub">
 						<span class="pill live"><span class="dot"></span> ready</span>
-						<span class="pill" id="duration-pill">0:00</span>
+						<span class="pill" id="practice-pill" title="Time practiced (this song)">
+							<svg class="pill-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+								stroke-linecap="round" stroke-linejoin="round">
+								<circle cx="12" cy="12" r="9" />
+								<path d="M12 7.5V12l3 2" />
+							</svg>
+							<span id="practice-time">0:00</span>
+						</span>
 					</div>
 				</div>
 			</div>
 			<div class="thumb-actions">
+				<div class="setlist-save-wrap">
+					<button class="ghost-btn" id="saveSetlistButton" title="Save this song to a setlist">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+							stroke-linecap="round" stroke-linejoin="round">
+							<path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+							<path d="M8 4v5h7V4" />
+							<path d="M8 21v-7h8v7" />
+						</svg>
+						Save
+					</button>
+					<div class="setlist-popover" id="setlist-popover" style="display:none">
+						<div class="setlist-popover-title">Add to setlist</div>
+						<div class="setlist-popover-list" id="setlist-popover-list"></div>
+						<form class="setlist-popover-new" id="setlist-popover-new">
+							<input type="text" id="setlist-new-name" placeholder="New setlist name…" autocomplete="off"
+								maxlength="60" />
+							<button type="submit" class="linkish">Add</button>
+						</form>
+					</div>
+				</div>
 				<button class="ghost-btn" id="addNewAudioButton" title="Load a different song">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-						stroke-linecap="round" stroke-linejoin="round">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+						stroke-linejoin="round">
 						<path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" />
 						<path d="M21 3v5h-5" />
 						<path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
 						<path d="M3 21v-5h5" />
 					</svg>
-					Change
+					<span id="change-label">Change</span>
 				</button>
 				<button class="ghost-btn" id="downloadAudioButton" title="Download audio">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-						stroke-linecap="round" stroke-linejoin="round">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+						stroke-linejoin="round">
 						<path d="M12 4v12" />
 						<path d="M7 11l5 5 5-5" />
 						<path d="M5 20h14" />
@@ -147,7 +350,7 @@
 		</div>
 
 		<!-- Waveform card -->
-		<div class="waveform-card">
+		<div class="waveform-card hidden" id="waveform-card">
 			<div class="wave-toolbar">
 				<div class="left">
 					<span class="time-display">
@@ -164,32 +367,43 @@
 						</svg>
 						<span id="loop-tag-text">0:00 &ndash; 0:00</span>
 					</span>
+					<span class="tag" id="reps-tag" style="display:none">&times; <span id="reps-tag-num">0</span></span>
 				</div>
 				<div class="right">
+					<span class="tag note-tag" id="note-tag" style="display:none">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+							stroke-linecap="round" stroke-linejoin="round">
+							<path d="M9 18V5l12-2v13" />
+							<circle cx="6" cy="18" r="3" />
+							<circle cx="18" cy="16" r="3" />
+						</svg>
+						<span class="note-tag-label">root</span>
+						<span id="note-root">&mdash;</span>
+					</span>
 					<span class="tag" id="zoom-tag">0% zoom</span>
 				</div>
 			</div>
 
 			<div class="waveform-stage" id="waveform-stage">
 				<div class="wave-grid"></div>
+				<div class="wave-flash" id="wave-flash" aria-hidden="true"></div>
 				<div class="wave-empty" id="wave-empty">
 					<div>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
 							stroke-linecap="round">
 							<path d="M3 12h2M7 8v8M11 5v14M15 8v8M19 11v2M21 12h0" />
 						</svg>
-						<div>Load a YouTube link to see the waveform</div>
+						<div>Load a track to see the waveform</div>
 					</div>
 				</div>
 				<div id="waveform"></div>
-				<div id="wave-timeline"></div>
 			</div>
 		</div>
 
 		<!-- Controls row -->
-		<div class="controls-row">
+		<div class="controls-row hidden" id="controls-row">
 			<div class="transport">
-				<button class="play-btn" id="play-pause" aria-label="Play" disabled>
+				<button class="play-btn" id="play-pause" aria-label="Play" title="Play / Pause (Space)" disabled>
 					<svg id="playButton" viewBox="0 0 24 24" fill="currentColor">
 						<path d="M8 5.5v13a1 1 0 0 0 1.55.83l10-6.5a1 1 0 0 0 0-1.66l-10-6.5A1 1 0 0 0 8 5.5z" />
 					</svg>
@@ -198,9 +412,9 @@
 						<rect x="13" y="5" width="4" height="14" rx="1.2" />
 					</svg>
 				</button>
-				<button class="loop-btn" id="loop" disabled>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-						stroke-linecap="round" stroke-linejoin="round">
+				<button class="loop-btn" id="loop" title="Loop a section" aria-pressed="false" disabled>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+						stroke-linejoin="round">
 						<path d="M17 3l3 3-3 3" />
 						<path d="M20 6H9a5 5 0 0 0 0 10h1" />
 						<path d="M7 21l-3-3 3-3" />
@@ -214,22 +428,85 @@
 			<div class="controls-middle">
 				<div class="control-group" title="Playback speed">
 					<span class="label">Speed</span>
-					<button class="stepper-btn" id="decrease-speed" disabled>&minus;</button>
+					<button class="stepper-btn" id="decrease-speed" aria-label="Decrease speed" disabled>&minus;</button>
 					<span class="stepper-value" id="speed-display">100%</span>
-					<button class="stepper-btn" id="increase-speed" disabled>+</button>
+					<button class="stepper-btn" id="increase-speed" aria-label="Increase speed" disabled>+</button>
+				</div>
+				<div class="control-group" title="Transpose pitch (semitones, tempo unchanged)">
+					<span class="label">Key</span>
+					<button class="stepper-btn" id="pitch-down" aria-label="Transpose down a semitone" disabled>&minus;</button>
+					<span class="stepper-value" id="pitch-display">0</span>
+					<button class="stepper-btn" id="pitch-up" aria-label="Transpose up a semitone" disabled>+</button>
 				</div>
 				<div class="control-group" title="Waveform zoom">
 					<span class="label">Zoom</span>
 					<div class="zoom-range-wrap">
 						<input class="zoom-range" id="zoom-range" type="range" min="0" max="100" step="10" value="0"
-							disabled />
+							aria-label="Waveform zoom" aria-valuetext="0%" disabled />
 						<span class="stepper-value" id="zoom-display" style="min-width:38px">0%</span>
+						<button class="stepper-btn" id="zoom-to-loop" title="Zoom to fit the loop" aria-label="Zoom to loop" disabled>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+								stroke-linecap="round" stroke-linejoin="round">
+								<path d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M8 20H5a1 1 0 0 1-1-1v-3M16 20h3a1 1 0 0 0 1-1v-3" />
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div class="control-group" title="Channel / vocal isolation">
+					<span class="label">Audio</span>
+					<div class="seg" id="channel-seg" role="group" aria-label="Channel mode">
+						<button class="seg-btn active" type="button" data-chan="stereo"
+							aria-pressed="true" disabled>Stereo</button>
+						<button class="seg-btn" type="button" data-chan="left"
+							aria-label="Left channel only" aria-pressed="false" disabled>L</button>
+						<button class="seg-btn" type="button" data-chan="right"
+							aria-label="Right channel only" aria-pressed="false" disabled>R</button>
+						<button class="seg-btn" type="button" data-chan="side"
+							title="Karaoke: cancel center-panned vocals (mid-side)"
+							aria-pressed="false" disabled>Karaoke</button>
 					</div>
 				</div>
 			</div>
 
 			<div class="right-cluster">
-				<button class="piano-toggle" id="showPianoButton" disabled>
+				<button class="piano-toggle" id="showFxButton" title="EQ, band-pass spotlight & compressor" aria-pressed="false" disabled>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+						stroke-linejoin="round">
+						<path d="M6 3v6M6 13v8M12 3v10M12 17v4M18 3v4M18 11v10" />
+						<circle cx="6" cy="11" r="2" />
+						<circle cx="12" cy="15" r="2" />
+						<circle cx="18" cy="9" r="2" />
+					</svg>
+					Sound
+				</button>
+				<button class="piano-toggle" id="showPracticeButton" title="Practice tools" aria-pressed="false" disabled>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+						stroke-linejoin="round">
+						<circle cx="12" cy="13" r="8" />
+						<path d="M12 13V9" />
+						<path d="M9 2h6" />
+					</svg>
+					Practice
+				</button>
+				<button class="piano-toggle" id="showNotesButton" title="Detect the pitch being played" aria-pressed="false" disabled>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+						stroke-linejoin="round">
+						<path d="M9 18V5l12-2v13" />
+						<circle cx="6" cy="18" r="3" />
+						<circle cx="18" cy="16" r="3" />
+					</svg>
+					Notes
+				</button>
+				<button class="piano-toggle" id="showMetronomeButton" title="Metronome" aria-pressed="false" disabled>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+						stroke-linejoin="round">
+						<path d="M6 21h12L15 4H9L6 21z" />
+						<path d="M5 16h14" />
+						<path d="M12 14l5-7" />
+					</svg>
+					Metronome
+				</button>
+				<button class="piano-toggle" id="showPianoButton" aria-pressed="false" disabled>
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
 						stroke-linejoin="round">
 						<rect x="3" y="5" width="18" height="14" rx="2" />
@@ -240,6 +517,186 @@
 					</svg>
 					Piano
 				</button>
+			</div>
+		</div>
+
+		<!-- Practice tools -->
+		<div class="metro-card practice-card" id="practice-body">
+			<div class="metro-head">
+				<h3>Practice</h3>
+				<p>Track reps and time, fade the track to play from memory, hold a drone, or export the loop.</p>
+			</div>
+			<div class="practice-grid">
+				<div class="practice-block">
+					<div class="practice-block-title">Session</div>
+					<div class="practice-stats">
+						<span class="pstat"><span class="pstat-num" id="ps-session">0:00</span><span
+								class="pstat-lbl">session</span></span>
+						<span class="pstat"><span class="pstat-num" id="ps-song">0:00</span><span class="pstat-lbl">this
+								song</span></span>
+						<span class="pstat"><span class="pstat-num" id="ps-today">0:00</span><span
+								class="pstat-lbl">today</span></span>
+						<span class="pstat"><span class="pstat-num" id="ps-today-reps">0</span><span
+								class="pstat-lbl">reps today</span></span>
+					</div>
+					<button class="ghost-btn small" id="journal-toggle">Show journal</button>
+					<div class="journal" id="journal" style="display:none"></div>
+				</div>
+
+				<div class="practice-block">
+					<div class="practice-block-title">Loop reps</div>
+					<div class="rep-counter" id="rep-count">0</div>
+					<button class="ghost-btn small" id="rep-reset">Reset</button>
+				</div>
+
+				<div class="practice-block">
+					<div class="practice-block-title">Memorize mode</div>
+					<p class="practice-hint">Fades the track a little each loop until silent, then back to full.</p>
+					<div class="practice-row">
+						<button class="toggle-pill" id="memorize-toggle" aria-pressed="false">Off</button>
+						<span class="stepper-value" id="memorize-level">off</span>
+					</div>
+				</div>
+
+				<div class="practice-block">
+					<div class="practice-block-title">Drone</div>
+					<div class="practice-row">
+						<button class="toggle-pill" id="drone-toggle" aria-pressed="false">Off</button>
+						<select class="metro-select" id="drone-note">
+							<option>C</option>
+							<option>C#</option>
+							<option>D</option>
+							<option>D#</option>
+							<option>E</option>
+							<option>F</option>
+							<option>F#</option>
+							<option>G</option>
+							<option>G#</option>
+							<option selected>A</option>
+							<option>A#</option>
+							<option>B</option>
+						</select>
+						<select class="metro-select" id="drone-octave">
+							<option>2</option>
+							<option selected>3</option>
+							<option>4</option>
+						</select>
+						<label class="check"><input type="checkbox" id="drone-octave-down" checked /> +oct below</label>
+					</div>
+					<div class="practice-row">
+						<span class="label">Vol</span>
+						<input class="zoom-range" id="drone-vol" type="range" min="0" max="100" value="40" />
+					</div>
+				</div>
+
+				<div class="practice-block">
+					<div class="practice-block-title">Export loop</div>
+					<p class="practice-hint">Save the looped region as a WAV file.</p>
+					<button class="ghost-btn" id="export-loop">Export loop (WAV)</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Sound (EQ / band-pass spotlight / compressor) -->
+		<div class="metro-card practice-card" id="fx-body">
+			<div class="metro-head">
+				<h3>Sound</h3>
+				<p>EQ presets, a band-pass spotlight to isolate a frequency range, and a compressor to even out
+					levels. Stacks with the Audio channel isolation.</p>
+			</div>
+			<div class="practice-grid">
+				<div class="practice-block">
+					<div class="practice-block-title">Equalizer</div>
+					<p class="practice-hint">Shape the tone to bring a part forward - boost mids for a vocal, lows
+						for a bassline.</p>
+					<div class="practice-row">
+						<span class="label">Preset</span>
+						<select class="metro-select" id="eq-preset" aria-label="EQ preset">
+							<option value="off" selected>Off (flat)</option>
+							<option value="vocals">Vocals</option>
+							<option value="bass">Bass focus</option>
+							<option value="guitar">High guitar</option>
+							<option value="drums">Drums</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="practice-block">
+					<div class="practice-block-title">Spotlight (band-pass)</div>
+					<p class="practice-hint">Solo a frequency band - drag low to follow the bass, high for cymbals.</p>
+					<div class="practice-row">
+						<button class="toggle-pill" id="spotlight-toggle" aria-pressed="false">Off</button>
+						<span class="stepper-value" id="spotlight-freq-label">630 Hz</span>
+					</div>
+					<div class="practice-row">
+						<span class="label">Freq</span>
+						<input class="zoom-range" id="spotlight-freq" type="range" min="0" max="100" value="50"
+							aria-label="Spotlight frequency" />
+					</div>
+					<div class="practice-row">
+						<span class="label">Width</span>
+						<input class="zoom-range" id="spotlight-q" type="range" min="0" max="100" value="50"
+							aria-label="Spotlight bandwidth" />
+					</div>
+				</div>
+
+				<div class="practice-block">
+					<div class="practice-block-title">Punch (compressor)</div>
+					<p class="practice-hint">Evens out loud and quiet so slowed-down or quiet passages stay
+						audible.</p>
+					<div class="practice-row">
+						<button class="toggle-pill" id="punch-toggle" aria-pressed="false">Off</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Metronome -->
+		<div class="metro-card" id="metro-body" data-click-src="{{ url_for('static', filename='sounds/click.wav') }}">
+			<div class="metro-head">
+				<h3>Metronome</h3>
+				<p>Tap to set the tempo, nudge the BPM, or pick the beats per bar. Plays alongside your loop.</p>
+			</div>
+			<div class="metro-controls">
+				<button class="metro-play" id="metro-toggle" aria-pressed="false">
+					<svg id="metro-play-icon" viewBox="0 0 24 24" fill="currentColor">
+						<path d="M8 5.5v13a1 1 0 0 0 1.55.83l10-6.5a1 1 0 0 0 0-1.66l-10-6.5A1 1 0 0 0 8 5.5z" />
+					</svg>
+					<svg id="metro-stop-icon" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+						<rect x="6" y="6" width="12" height="12" rx="1.5" />
+					</svg>
+					<span id="metro-toggle-label">Start</span>
+				</button>
+
+				<div class="control-group" title="Tempo">
+					<span class="label">BPM</span>
+					<button class="stepper-btn" id="bpm-down" aria-label="Decrease tempo">&minus;</button>
+					<span class="stepper-value" id="bpm-display">100</span>
+					<button class="stepper-btn" id="bpm-up" aria-label="Increase tempo">+</button>
+				</div>
+
+				<button class="ghost-btn" id="metro-tap">Tap tempo</button>
+				<button class="ghost-btn" id="metro-sync" title="Detect the loaded track's tempo">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+						stroke-linejoin="round">
+						<path d="M21 12a9 9 0 1 1-2.64-6.36" />
+						<path d="M21 4v4h-4" />
+					</svg>
+					<span id="metro-sync-label">Sync to track</span>
+				</button>
+
+				<div class="control-group" title="Beats per bar (1 = plain click, no accent)">
+					<span class="label">Beats</span>
+					<select class="metro-select" id="metro-beats">
+						<option value="1">1</option>
+						<option value="2">2</option>
+						<option value="3">3</option>
+						<option value="4" selected>4</option>
+						<option value="6">6</option>
+					</select>
+				</div>
+
+				<div class="beat-dots" id="beat-dots"></div>
 			</div>
 		</div>
 
@@ -304,6 +761,24 @@
 					<span class="heart">&hearts;</span> Support
 				</a>
 			</div>
+		</div>
+	</div>
+
+	<!-- Keyboard shortcuts overlay (opened with "?"); rows are generated from a
+	     single map in app.js so this list never drifts from the real bindings. -->
+	<div class="shortcuts-overlay" id="shortcuts-overlay" role="dialog" aria-modal="true"
+		aria-labelledby="shortcuts-title" style="display:none">
+		<div class="shortcuts-modal" role="document">
+			<div class="shortcuts-modal-head">
+				<h3 id="shortcuts-title">Keyboard shortcuts</h3>
+				<button class="icon-btn" id="shortcuts-close" aria-label="Close shortcuts">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+						stroke-linecap="round">
+						<path d="M6 6l12 12M18 6L6 18" />
+					</svg>
+				</button>
+			</div>
+			<div class="shortcuts-list" id="shortcuts-list"></div>
 		</div>
 	</div>
 

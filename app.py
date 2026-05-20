@@ -1,127 +1,66 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-import yt_dlp as youtube_dl
-import threading
+"""Entrypoint. Real app lives in the ``loopretto`` package (app factory)."""
+import logging
 import os
-import re
+import socket
+import threading
+import time
+import webbrowser
 
-# Use the ffmpeg bundled via imageio-ffmpeg so end users don't have to install it.
-try:
-    import imageio_ffmpeg
-    FFMPEG_LOCATION = imageio_ffmpeg.get_ffmpeg_exe()
-except Exception:
-    FFMPEG_LOCATION = None
+from loopretto import create_app
+from loopretto.config import Config
 
-app = Flask(__name__, static_folder='static')
-
-# Rate limiter: 5 requests per minute per IP
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[
-        "3 per minute",
-        "10 per hour",
-        "20 per day"
-    ],
-    storage_uri="memory://"
-)
-limiter.init_app(app)
+app = create_app()
 
 
-# Optional shared secret from env
-REQUIRE_SECRET = False
-APP_SECRET = os.environ.get("APP_SECRET", "loopmania")
+def _open_browser_when_ready(port, host="127.0.0.1", timeout=20.0):
+    """Open the default browser at the app URL, once the server answers.
 
-YOUTUBE_PATTERN = re.compile(r"^https:\/\/(www\.)?(youtube\.com|youtu\.be)\/")
-
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/howto')
-def howto():
-    return render_template('howto.html')
-
-@app.route('/about')
-def about():
-    return render_template('about.html')
-
-
-@limiter.limit("5 per minute")
-@app.route('/get_audio', methods=['POST'])
-def get_audio():
-    data = request.get_json()
-    youtube_url = data.get('url')
-    secret = data.get('secret')
-
-    if not youtube_url:
-        return jsonify({'error': 'No URL provided'}), 400
-
-    if REQUIRE_SECRET and secret != APP_SECRET:
-        return jsonify({'error': 'Unauthorized'}), 403
-
-    if not YOUTUBE_PATTERN.match(youtube_url):
-        return jsonify({'error': 'Invalid YouTube URL'}), 400
-
-    # Remove previous file(s)
-    for ext in ['m4a', 'webm', 'mp3', 'opus']:
+    Lives here (not in ``run.bat``) so the tab opens for *every* launch path -
+    ``run.bat``, ``python app.py``, and the packaged Windows ``.exe`` / macOS
+    ``.app`` builds, which all run this entrypoint. Runs on a daemon thread and
+    polls the port instead of sleeping a fixed amount, so the tab never opens
+    before the page is actually serving (and never opens a dead tab if startup
+    fails). On Windows ``webbrowser.open`` uses the registry default; on macOS
+    it shells out to ``open`` - both work the same from a frozen bundle.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         try:
-            os.remove(f'audio.{ext}')
-        except FileNotFoundError:
-            pass
-
-    ydl_opts = {
-        'format': 'bestaudio[ext=m4a]/bestaudio',
-        'outtmpl': 'audio.%(ext)s',
-        'noplaylist': True,
-        'quiet': True,
-        'no_warnings': True,
-        'download_sections': ['*00:00:00-00:10:00'],  # Limit to 10 min
-        'max_filesize': 30 * 1024 * 1024,  # 30MB max
-    }
-    if FFMPEG_LOCATION:
-        ydl_opts['ffmpeg_location'] = FFMPEG_LOCATION
-
+            with socket.create_connection((host, port), timeout=0.5):
+                break
+        except OSError:
+            time.sleep(0.2)
+    else:
+        return  # server never came up - don't open a tab to nothing
     try:
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=True)
-    except Exception as e:
-        return jsonify({'error': 'Failed to download audio'}), 500
-
-    video_title = info.get('title', 'Unknown Title')
-    thumbnail_url = info.get('thumbnail', '')
-    ext = info.get('ext', 'm4a')
-    filename = f'audio.{ext}'
-
-    # Verify file size
-    if not os.path.exists(filename):
-        return jsonify({'error': 'Audio file not found'}), 500
-
-    size = os.path.getsize(filename)
-    if size > 30 * 1024 * 1024:
-        os.remove(filename)
-        return jsonify({'error': 'Audio too large'}), 400
-
-    return jsonify({
-        'title': video_title,
-        'thumbnail': thumbnail_url,
-        'audio_file': filename
-    })
+        webbrowser.open(f"http://localhost:{port}")
+    except Exception:  # pragma: no cover - opening a browser is best-effort
+        logging.getLogger(__name__).warning("Could not open a browser automatically.")
 
 
-@app.route('/audio/<filename>')
-def download_file(filename):
-    # Auto-delete file 60 seconds after access
-    path = os.path.join('.', filename)
+def _strip_dev_warning(record):
+    """Drop Werkzeug's "development server" banner line, keep the address info.
 
-    if not os.path.exists(path):
-        return "File not found", 404
+    Loopretto is local-only by design (see CLAUDE.md), so the production-WSGI
+    warning is noise. Werkzeug logs the whole startup banner as one record, so
+    we filter out just that line rather than silencing the logger.
+    """
+    msg = record.getMessage()
+    if "This is a development server" in msg:
+        kept = [ln for ln in msg.splitlines() if "This is a development server" not in ln]
+        record.msg = "\n".join(kept)
+        record.args = None
+    return True
 
-    threading.Timer(60.0, lambda: os.path.exists(path) and os.remove(path)).start()
-    return send_from_directory(directory='.', path=filename)
 
+logging.getLogger("werkzeug").addFilter(_strip_dev_warning)
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
-
+if __name__ == "__main__":
+    # Auto-open the browser on launch. Skip if NO_BROWSER=1 (headless runs), and
+    # guard against the Werkzeug reloader's double-spawn (harmless here since
+    # debug=False means no reloader, but correct if that ever changes).
+    if os.environ.get("NO_BROWSER") != "1" and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        threading.Thread(
+            target=_open_browser_when_ready, args=(Config.PORT,), daemon=True
+        ).start()
+    app.run(host="0.0.0.0", port=Config.PORT, debug=False)

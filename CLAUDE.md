@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Loopretto** — a local Flask app that downloads a YouTube track via `yt-dlp` and serves a single-page web UI for looping sections of it (waveform via WaveSurfer.js, reference piano via mp3 samples). Designed to be run on the user's own machine; no accounts, no cloud storage.
+**Loopretto** - a local Flask app that downloads a YouTube track via `yt-dlp` and serves a single-page web UI for looping sections of it (waveform via WaveSurfer.js, reference piano via mp3 samples). Designed to be run on the user's own machine; no accounts, no cloud storage.
+
+> **Local-only, by design - this will never be deployed.** It's a personal tool the owner runs on their own machine; deploying is intentionally off the table. Downloads work **anonymously - no login, no cookies** - by pointing yt-dlp at alternate YouTube *player clients* that aren't behind the "confirm you're not a bot" wall (see "YouTube player client" below). So Loopretto stays a **single-user, localhost app**.
+>
+> Because of that, its single-user assumptions are **permanent, not interim**: in-process rate limiting, no CSRF/CORS gate, the dormant secret gate, a single reused working audio file, the dev server, and so on are all fine and intended. **Do not add "production hardening"** - Redis-backed limiting, CORS/CSRF, gunicorn/waitress, HTTPS/HSTS, multi-worker concurrency, autoscaling, etc. are out of scope and wasted effort here. Keep every change aligned with the local, single-user model.
 
 ## Common commands
 
@@ -15,61 +19,108 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python app.py                              # serves on http://localhost:5000
 
-# Run locally (Windows, user-facing)
+# Run locally (Windows, user-facing) - the primary way it's run
 run.bat                                    # creates .venv, installs deps, opens browser
 
 # Override port
 PORT=8080 python app.py                    # or set PORT=8080 on Windows
-
-# Docker
-docker build -t loopretto .
-docker run -p 5000:5000 loopretto
-
-# Deploy (Fly.io)
-fly deploy                                 # app name: "loopretto", see fly.toml
 ```
 
-There are no tests, linters, or build steps configured. The frontend is vanilla JS + CDN-loaded WaveSurfer; there is no bundler.
+There is no deploy step - the app is always run on `localhost` (see the note above).
+
+There are no tests, linters, or build steps configured. The frontend is vanilla JS + vendored WaveSurfer (`static/js/vendor/`, pinned 7.12.7); there is no bundler.
+
+**Dependencies:** `requirements.in` is the manifest (4 direct deps: Flask, Flask-Limiter, imageio-ffmpeg, yt-dlp); `requirements.txt` is the pinned lockfile that `run.bat` installs. Regenerate the lock with `uv pip compile requirements.in -o requirements.txt`. `yt-dlp` is deliberately a **range** (`>=2026.02.21,<2027`) in both - a stale pin breaks downloads when YouTube changes extractors. `.github/dependabot.yml` bumps deps weekly.
 
 ## Architecture
 
-### Backend (`app.py`, ~125 lines)
+### Backend (`loopretto/` package, app factory)
 
-A single Flask module with three routes plus static pages:
+`app.py` at the repo root is a thin entrypoint: `app = create_app()` then `app.run(...)`. `run.bat` and `python app.py` use this. The real code is a small package:
 
-- `POST /get_audio` — accepts `{url}`, validates against `YOUTUBE_PATTERN`, deletes any prior `audio.*` file, then runs `yt-dlp` with `download_sections=['*00:00:00-00:10:00']` and `max_filesize=30MB`. Returns `{title, thumbnail, audio_file}`. Rate-limited to **5/min per IP** (plus global defaults of 3/min, 10/hour, 20/day via `Flask-Limiter`, memory backend — won't survive restarts or scale horizontally).
-- `GET /audio/<filename>` — serves the downloaded file and schedules `os.remove` via `threading.Timer(60.0, ...)`. The 60-second auto-delete is load-bearing: the frontend must fetch the file into a Blob (`URL.createObjectURL`) *before* the timer fires, then plays from the blob — the original file is intentionally gone after ~60s.
-- `GET /`, `/howto`, `/about` — render the corresponding Jinja templates.
+```
+loopretto/
+  __init__.py        # create_app() factory: Flask app, blueprints, limiter, static cache
+  config.py          # all tunables (env-overridable); YOUTUBE_PATTERN, caps, AUDIO_DIR, rate limits
+  extensions.py      # Flask-Limiter instance (memory storage)
+  routes/
+    pages.py         # GET /, /howto, /about
+    audio.py         # POST /get_audio, GET /audio/<filename>
+  services/
+    downloader.py    # yt-dlp wrapper + YouTube URL validation + ffmpeg location
+    storage.py       # audio-file path/validation/cleanup helpers
+```
 
-`imageio-ffmpeg` provides a bundled `ffmpeg` binary so end users on Windows don't need to install ffmpeg system-wide (the Dockerfile installs apt's ffmpeg instead, but `FFMPEG_LOCATION` still works either way).
+- `POST /get_audio` - accepts `{url}`, validates via `is_supported_url()` (an **allowlist of hosts** - `Config.SUPPORTED_HOSTS`: YouTube/SoundCloud/Bandcamp/Vimeo + subdomains - or a direct audio-file URL, capped at `MAX_URL_LENGTH`; yt-dlp's extractors handle the rest), removes any prior `audio.*` file (glob, so thumbnails/`.info.json` go too), then runs `yt-dlp` with `download_sections` (leading 10 min) and `max_filesize` (30 MB). Returns `{title, thumbnail, audio_file}`. Failures raise `DownloadError`, are logged via `logger.exception`, and map to a 4xx/5xx JSON error. Rate-limited to **5/min per IP** plus global defaults (3/min, 10/hour, 20/day) via `Flask-Limiter` (memory backend - resets on restart, not shared across workers).
+- `GET /audio/<filename>` - serves the working file with `conditional=True` (HTTP range requests) so the browser **streams** it; the filename is validated against `^audio\.[a-z0-9]+$`. Because the filename is reused across tracks, this response is forced to `Cache-Control: no-store`. There is **no per-request deletion timer** - the file simply lives until the next track is downloaded (which clears it).
+- `GET /`, `/howto`, `/about` - render the corresponding Jinja templates.
 
-`REQUIRE_SECRET` / `APP_SECRET` exist but `REQUIRE_SECRET` is hardcoded `False` — the secret gate is dormant.
+**YouTube player client (how anonymous downloads work).** YouTube gates its default `web` client behind a "confirm you're not a bot" wall. `_ydl_opts()` sets `extractor_args.youtube.player_client` to `Config.YOUTUBE_PLAYER_CLIENTS` (default `web_safari,android_vr,tv,android,ios`) - these return formats with **no login and no cookies**, so downloads just work. yt-dlp aggregates formats across the listed clients, so include a few for resilience; override via the `YOUTUBE_PLAYER_CLIENTS` env (comma list) if YouTube shifts which ones pass. If they ever break, the symptom is the bot-check error again - try other clients first. Cookies are **optional and off by default** (`COOKIES_FROM_BROWSER` / `COOKIES_FILE`), only for the rare age-restricted/private video; on Windows, Chrome/Edge cookie DBs can't be read while those browsers run, so prefer Firefox or a `cookies.txt`. `_friendly_error` maps yt-dlp failures to short user messages.
 
-### Frontend (`static/js/app.js`, `templates/index.html`, `static/css/styles.css`)
+`AUDIO_DIR` defaults to an **absolute** path (the repo root, computed in `config.py`). This matters: the Flask app's `root_path` is now the package dir, so a relative `"."` would resolve there and break `send_from_directory`. Keep `AUDIO_DIR` absolute.
 
-Single-page app, no framework. Three coupled state machines live in `app.js`:
+`imageio-ffmpeg` provides a bundled `ffmpeg` so users don't need it system-wide (`FFMPEG_LOCATION` points at it). `REQUIRE_SECRET`/`APP_SECRET` exist but `REQUIRE_SECRET` defaults `False` - the secret gate is dormant and stays that way (local only).
 
-1. **Load/unload lifecycle**: `loadAudio()` POSTs to `/get_audio`, fetches `/audio/<file>` into a Blob, feeds the blob URL into `wavesurfer.load(...)`. `addNewAudioButton` tears everything down without reloading the page.
-2. **Loop region**: clicking the waveform sets `masterClickTime` / `loopStart`; pressing the Loop button creates a `wavesurfer.addRegion({loop: true, ...})` 5 seconds long by default. The region itself owns the looping behavior — `region-update-end` syncs `loopStart`/`loopEnd` back to module state.
-3. **Theme**: `body.theme-midnight | theme-daylight | theme-mono`, cycled via the menu, persisted in `localStorage` under `loopretto.themeIdx`. Waveform colors are re-applied on theme change via `reapplyWaveColors()` — any new themable colors must be wired through `getWaveColors()` so the canvas stays in sync.
+Static assets are cached for **1 year** (`SEND_FILE_MAX_AGE_DEFAULT`, set in `create_app`). Assets are not content-hashed, so **hard-refresh after editing CSS/JS** during development, or run with `STATIC_CACHE_SECONDS=0`.
 
-WaveSurfer.js v6 is loaded from `unpkg.com` (timeline + regions plugins). Backend is `MediaElement` (not WebAudio) — this matters if you ever try to add effects/filters that require the WebAudio graph.
+### Frontend (`static/js/*.js`, `templates/index.html`, `static/css/styles.css`)
 
-Keyboard: Space = play/pause, ←/→ = 0.5s nudge, `z x c v b n m` + `s d g h j` = piano keys. The piano `<audio>` tags are inline in `index.html` (one per note, samples in `static/piano/`).
+Single-page app, no framework, no bundler. **WaveSurfer.js v7** is **vendored** in `static/js/vendor/` (pinned 7.12.7: `wavesurfer.min.js` + the `wavesurfer.timeline.min.js` / `wavesurfer.regions.min.js` UMD plugin builds exposing `WaveSurfer.Timeline` / `WaveSurfer.Regions`) - no CDN at launch, so the app works offline after the first track. Re-vendor by curling the same paths from `unpkg.com/wavesurfer.js@<version>/dist/...`. Four `defer`'d scripts load in order - three feature modules expose globals, then `app.js` orchestrates everything:
 
-### `New design/` directory
+- `pitch-shifter.js` → `window.Jungle` - tempo-preserving pitch shift (delay-line + crossfade, works on a live stream).
+- `pitch-detect.js` → `window.PitchDetect` - `autoCorrelate()` + `freqToNote()` (ACF pitch detection).
+- `metronome.js` → `window.Metronome` - look-ahead scheduler, tap-tempo, accented downbeat.
+- `practice.js` → `window.PracticeStore` - localStorage-backed per-song time/rep log + daily totals (single key `loopretto.practice`).
+- `audio-export.js` → `window.AudioExport` - `encodeWav(buffer, startSec, endSec)` → 16-bit PCM WAV Blob.
+- `setlists.js` → `window.SetlistStore` - localStorage named song-lists (key `loopretto.setlists`); only URL-based songs (a dropped file has no durable URL).
+- `app.js` - DOM wiring, WaveSurfer, the Web Audio graph, and all the state machines.
 
-A standalone React/JSX prototype (Babel-in-browser, no build step) for an upcoming redesign. **Not wired into the Flask app** — `templates/index.html` is what actually ships. Treat `New design/` as design exploration only unless explicitly migrating it in.
+State machines in `app.js`:
 
-### Deploy targets
+1. **Load/unload lifecycle**: two sources feed the same player. `loadAudio()` POSTs to `/get_audio` then `wavesurfer.load('/audio/<file>?t=<ts>')` (streamed directly, no Blob round-trip; `?t=` defeats the reused filename). `loadFile()` handles drag-and-drop / file-picker input by `URL.createObjectURL`-ing the `File` and loading it - **no server round-trip at all**. `revealPlayer()` is the shared "show the UI" step; `addNewAudioButton` tears everything down (including metronome/notes/transpose) without reloading. `sourceType` (`"youtube"|"file"`) decides how Download behaves.
+2. **Loop region**: clicking the waveform fires v7's `interaction` event, setting `masterClickTime`/`loopStart`; the Loop button creates a 5-second `wsRegions.addRegion(...)`. v7 regions have **no built-in `loop` option** - looping is manual via the `region-out` event (jump back to `region.start`). `region-updated` syncs drag/resize back to module state.
+3. **Theme**: `body.theme-midnight | theme-daylight | theme-mono`, cycled via the menu, persisted in `localStorage` (`loopretto.themeIdx`). Waveform colors re-apply via `reapplyWaveColors()` → `wavesurfer.setOptions({...})`; new themable colors must route through `getWaveColors()`.
 
-- `fly.toml` — app `loopretto`, internal port 5000, region `otp` (change for your deploy).
-- `Dockerfile` — Python 3.11-slim + apt ffmpeg.
-- `run.bat` — the path most end users take on Windows; bootstraps `.venv` on first run, skips on subsequent runs.
+**Audio graph (Web Audio):** the app owns the `<audio>` element (`new Audio()`, `preservesPitch = true`) and passes it to WaveSurfer via the `media` option. `ensureAudioGraph()` (called on any first play/toggle gesture) lazily builds it once: `MediaElementSource → [Jungle pitch shifter | direct] → channelIn → [channel-isolation stage] → channelOut → fxIn → [EQ → band-pass → compressor] → fxOut → masterGain → destination`, with an `AnalyserNode` tapping `masterGain` for note detection, and the `Metronome` attached to the same context (clicks go straight to `destination`). The graph survives across loads because we own the element. `routePitch()` bypasses the pitch shifter at 0 semitones (clean audio) and inserts it otherwise (its output target is `channelIn`, not master) - call it whenever `semitoneOffset` changes. `applyChannelMode()` rewires only the `channelIn → channelOut` segment; `rebuildFxChain()` rewires only the `fxIn → fxOut` segment.
+
+**Features wired on top of the graph:**
+- **Transpose (§5.1)**: "Key" −/+ buttons set `semitoneOffset` (−12…+12) → `Jungle.setPitchOffset(semitones/12)`. Tempo is unchanged.
+- **Channel isolation / karaoke (§4.C)**: the "Audio" segmented control (Stereo / L / R / Karaoke) calls `applyChannelMode()`, which rebuilds a `ChannelSplitter`→(gains)→`ChannelMerger` sub-graph between `channelIn` and `channelOut`. "Karaoke" plays **L−R** (the mid-side difference) to cancel center-panned vocals. Resets to Stereo on each load/teardown (`resetChannelMode()`). Because the metronome/drone bypass `masterGain` (and the whole channel/FX stages), they're unaffected.
+- **Sound FX panel (§4.C)**: the "Sound" toggle opens a panel with three effects living in the FX segment (`fxIn → fxOut`); persistent nodes are wired in series by `rebuildFxChain()` only when active (toggles reconnect; sliders update `AudioParam`s live). (a) **Parametric EQ** - a 5-band `BiquadFilterNode` chain (80/250/1k/3.5k/12k), preset gains in `EQ_PRESETS`; "off" bypasses it. (b) **Band-pass spotlight** - one band-pass `BiquadFilterNode` with log-mapped Freq/Width sliders. (c) **Punch** - a `DynamicsCompressorNode` + make-up gain. `resetFx()` clears all three on load/teardown.
+- **Note overlay (§5.6)**: the "Notes" toggle runs a `requestAnimationFrame` loop reading the analyser → `autoCorrelate` → live note pill (name + cents) plus a rolling strip of recently-detected stable notes.
+- **Metronome (§5.9)**: the "Metronome" panel (Start/Stop, BPM ±, Tap tempo, beats-per-bar, visual beat dots). Beats-per-bar of **1** means a plain, un-accented click (no downbeat) - every tick is identical; values >1 accent beat 0. The click sample is **`static/sounds/click.wav`**, passed to the client via the panel's `data-click-src` (`url_for`). It's a generated placeholder - drop in any WAV at that path to replace it.
+- **Practice panel** (the "Practice" toggle) bundles four features, all keyed to the current song (`currentSongId` - `yt:<id>` or `file:<name>`):
+  - **Loop reps (§5.31)**: incremented in the `region-out` loop handler (`onLoopRestart`); shown as a `× N` badge by the loop tag and reset on demand (daily total persists).
+  - **Session timer + journal (§5.32)**: active-playback time is clocked on `play`/`pause`/`finish` (`startPlayClock`/`flushPlayTime`) and banked into `PracticeStore` per song + per day; the journal lists all logged songs. Time is flushed on `beforeunload`.
+  - **Memorize mode (§5.34)**: each loop restart steps `masterGain` down ~3 dB (`MEM_LEVELS`) until silent, then back to full - fades only the track (metronome/drone bypass `masterGain`).
+  - **Drone (§5.37)**: sustained sine oscillator(s) (note + octave, optional octave-below) through a lowpass to `destination`, **bypassing `masterGain`** so memorize/transpose don't affect the reference pitch.
+- **Export loop (§5.57)**: fetches the source, `decodeAudioData`, slices the loop region, and downloads it as WAV via `AudioExport.encodeWav` (no effects baked in - clean original-pitch audio).
+
+**Sources, sessions, setlists & UX:**
+- **Sources (§5.79)**: any host the backend allowlists, plus dropped local files. `sourceType` is `"youtube"` (= any server-downloaded URL source) or `"file"`; `currentSourceUrl` holds the actual URL (null for files). Local files can't be saved to setlists or restored on reload (no durable URL).
+- **Setlists (§5.84)**: `SetlistStore` named lists shown in the loading view (click a song to load it); the "Save" button in the player opens a popover to add the current song to / create a setlist.
+- **Restore last session (§5.99)**: `saveSession()` writes `{url,title,loop,speed,pitch,zoom}` to `loopretto.session` every 5s + on `beforeunload` (URL sources only). On load a "Resume" banner offers to reload it; restore is applied via `pendingRestore` after `wavesurfer.load()` resolves. It does **not** auto-download - the user clicks Resume (avoids surprise re-fetches / rate limits).
+- **UX:** staged load labels (§6.6, timed stages then a real "Decoding…"); `user-select` scoped to chrome only (§6.3); disabled controls use `pointer-events:none` so a hover surfaces the "Load a track first" tooltip on the wrapping element (§6.7, managed in `setHintTitles`); the "Change" button is a click-to-confirm when a loop exists (§6.8).
+
+Speed changes call `setPlaybackRate(rate, true)` (preserve pitch). Wheel-zoom is throttled to one re-render per animation frame. Keyboard: Space = play/pause, ←/→ = 0.5s nudge (`wavesurfer.setTime`), `z x c v b n m` + `s d g h j` = piano keys (inline `<audio>` tags, samples in `static/piano/`).
+
+### Templates / styling
+
+All three templates (`index.html`, `howto.html`, `about.html`) share **`static/css/styles.css`** and the same design tokens (oklch theme variables, Space Grotesk / DM Sans / JetBrains Mono). Tailwind has been removed. Content pages use the `.doc-*` classes at the bottom of `styles.css`; they default to `theme-midnight`.
+
+### Running it
+
+- `run.bat` - the primary way it's run on Windows; bootstraps `.venv` on first run, installs deps, opens the browser at `localhost:5000`.
+- `python app.py` - the Mac/Linux path.
+
+There are **no deploy files** - the old `fly.toml`/`Dockerfile` were removed, since the app is never deployed (deploying breaks YouTube downloads - see the top note). Don't reintroduce them.
 
 ## Things to watch when editing
 
-- The audio file's 60-second TTL means the *download* button has to re-fetch from `/audio/<file>` while it still exists. If you change the TTL or the cleanup logic, also update the user-facing copy in the README and the error message in `app.js` (`"may have already been cleaned up — load again"`).
-- `Flask-Limiter`'s memory backend resets every process restart and isn't shared across workers — fine for single-instance Fly.io / local use, but adding gunicorn workers or scaling out requires Redis storage.
-- `yt-dlp`'s `download_sections` + `max_filesize` are the only guardrails against large/long downloads — keep them in sync if you raise the 10-minute cap.
-- There is no CSRF token on `/get_audio`; the app assumes same-origin local usage.
+- The served audio file persists until the next download; if you change `AUDIO_DIR`, keep it absolute and consistent between `downloader.py` (yt-dlp `outtmpl`) and `storage.py`/`audio.py` (serving + cleanup).
+- WaveSurfer **v7 API differs from v6**: events `timeupdate`/`interaction`/`ready(duration)`, methods `setTime`/`setOptions`, regions via `registerPlugin` + manual loop. Don't reintroduce v6 calls (`addRegion` on the instance, `setWaveColor`, `audioprocess`, `seek`, region `loop: true`).
+- `Flask-Limiter`'s memory backend resets on restart and isn't shared across workers - fine for local single-instance use.
+- `yt-dlp`'s `download_sections` + `max_filesize` are the only guardrails against large/long downloads - keep them in sync (both live in `config.py`).
+- The Web Audio graph creates `MediaElementSource` **once** per element; don't create a second one or playback audio will be lost. Changing transpose calls `mediaSource.disconnect()` + reconnect via `routePitch()` - keep that the only place that rewires the source (it reconnects into `channelIn`, the entry of the channel-isolation stage). Channel-mode changes touch only the `channelIn → channelOut` segment via `applyChannelMode()`; don't rewire the source there.
+- The pitch shifter is a live-stream delay-line effect (no full-buffer decode), so it composes with streaming playback but has mild warble at large intervals - that's expected, not a bug. It's bypassed entirely at 0 semitones.
+- `static/sounds/click.wav` is a generated placeholder metronome sample; replacing the file (same path) is all that's needed to change the click.

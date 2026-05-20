@@ -1,157 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>About Loopretto</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Favicon for most browsers -->
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="32x32"
-      href="{{ url_for('static', filename='images/favicon/favicon-32x32.png') }}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="{{ url_for('static', filename='images/favicon/favicon-16x16.png') }}"
-    />
-    <link
-      rel="shortcut icon"
-      href="{{ url_for('static', filename='images/favicon/favicon.ico') }}"
-    />
 
-    <!-- Apple Touch Icon -->
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="{{ url_for('static', filename='images/favicon/apple-touch-icon.png') }}"
-    />
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>About Loopretto</title>
 
-    <!-- Android Chrome -->
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="192x192"
-      href="{{ url_for('static', filename='images/favicon/android-chrome-192x192.png') }}"
-    />
-    <link
-      rel="icon"
-      type="image/png"
-      sizes="512x512"
-      href="{{ url_for('static', filename='images/favicon/android-chrome-512x512.png') }}"
-    />
+	<!-- Apply the theme + accent the user picked in the app, before paint. -->
+	<script>
+		(function () {
+			try {
+				var themes = ["theme-light", "theme-dim", "theme-dark"];
+				var t = localStorage.getItem("loopretto.theme");
+				document.documentElement.classList.add(themes.indexOf(t) >= 0 ? t : "theme-dim");
+				var a = localStorage.getItem("loopretto.accent");
+				if (a) document.documentElement.style.setProperty("--accent-raw", a);
+			} catch (e) {
+				document.documentElement.classList.add("theme-dim");
+			}
+		})();
+	</script>
 
-    <!-- Manifest for PWA support -->
-    <link
-      rel="manifest"
-      href="{{ url_for('static', filename='images/favicon/site.webmanifest') }}"
-    />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      body {
-        font-family: "Comfortaa", cursive;
-        background: rgb(25, 53, 73);
-      }
-    </style>
-  </head>
-  <body class="text-white min-h-screen p-8">
-    <div
-      class="max-w-6xl mx-auto bg-white bg-opacity-10 backdrop-blur-md rounded-2xl px-8 py-4 shadow-xl"
-    >
-      <div class="flex justify-left items-center mb-2">
-        <img
-          src="{{ url_for('static', filename='images/transparent-icon.png') }}"
-          alt="Loopretto Icon"
-          class="w-24 h-24"
-        />
-        <h1 class="text-5xl font-bold text-white ml-2">About Loopretto</h1>
-      </div>
+	<!-- Favicons -->
+	<link rel="icon" type="image/png" sizes="32x32"
+		href="{{ url_for('static', filename='images/favicon/favicon-32x32.png') }}" />
+	<link rel="icon" type="image/png" sizes="16x16"
+		href="{{ url_for('static', filename='images/favicon/favicon-16x16.png') }}" />
+	<link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon/favicon.ico') }}" />
+	<link rel="apple-touch-icon" sizes="180x180"
+		href="{{ url_for('static', filename='images/favicon/apple-touch-icon.png') }}" />
+	<link rel="manifest" href="{{ url_for('static', filename='images/favicon/site.webmanifest') }}" />
 
-      <p class="text-lg mb-6 text-gray-100 leading-relaxed">
-        <strong>Loopretto</strong> is a sleek and simple web app designed for
-        musicians and curious ears. Just drop in a YouTube link, and Loopretto
-        extracts the audio, giving you an intuitive, distraction-free space to
-        zoom in, loop sections, slow down playback, download the song and even
-        jam along using the built-in piano.
-      </p>
+	<!-- Fonts -->
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link
+		href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+		rel="stylesheet" />
 
-      <p class="text-lg mb-6 text-gray-100 leading-relaxed">
-        Whether you're transcribing a jazz solo, studying tricky licks, or just
-        looping a beat for fun — Loopretto helps you
-        <em>hear more and guess less</em>.
-      </p>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
 
-      <h2 class="text-3xl font-semibold mb-4 mt-8 text-white">Key Features</h2>
-      <ul class="list-disc list-inside text-gray-100 space-y-2">
-        <li>🎧 Extracts high-quality audio from any YouTube video</li>
-        <li>🔁 Set loop regions with ease</li>
-        <li>🐢 Slow down or speed up playback without losing pitch</li>
-        <li>🎹 Virtual piano for pitch matching and reference</li>
-        <li>🌙 Zen mode for fullscreen, focused listening</li>
-        <li>🎨 Custom themes to match your vibe</li>
-      </ul>
+<body>
+	<div class="doc-shell">
+		<div class="doc-topbar reveal">
+			<a class="brand" href="/">
+				<img class="brand-icon on-dark"
+					src="{{ url_for('static', filename='images/logo-mark-light.png') }}" alt="Loopretto" />
+				<img class="brand-icon on-light"
+					src="{{ url_for('static', filename='images/logo-mark.png') }}" alt="Loopretto" />
+			</a>
+			<a class="doc-back" href="/">&larr; Back to app</a>
+		</div>
 
-      <p class="text-lg mt-6 text-gray-100 leading-relaxed">
-        Loopretto runs right in your browser — no installations, no ads, no
-        clutter. Just music and tools that help you learn by ear — better and
-        faster.
-      </p>
-    </div>
+		<div class="doc-hero">
+			<span class="doc-eyebrow reveal">About</span>
+			<h1 class="doc-title reveal">Hear more.<br /><em>Guess less.</em></h1>
+			<p class="doc-lede reveal">A clean, local workspace for learning music by ear.</p>
+		</div>
 
-    <div class="mt-4 text-center text-gray-100">
-      <p class="text-lg">
-        Created by
-        <a
-          href="https://cristiangabriel.dev"
-          target="_blank"
-          class="text-yellow-300 font-semibold hover:underline"
-        >
-          Cristian Gabriel
-        </a>
-        — a musician and developer passionate about building tools that make
-        creative work easier — for myself and for others.
-      </p>
-      <p class="mt-2">
-        Have feedback or ideas? Reach out at
-        <a
-          href="mailto:me@cristiangabriel.dev"
-          class="text-yellow-300 hover:underline"
-        >
-          me@cristiangabriel.dev
-        </a>
-      </p>
-      <div class="mt-4 flex justify-center items-center gap-2">
-        <span>If you enjoy using Loopretto,</span>
-        <a
-          href="https://ko-fi.com/cristian_gabriel/?amount=5"
-          target="_blank"
-          title="Buy Me a Coffee"
-        >
-          <img
-            height="40"
-            style="border: 0px; height: 40px"
-            src="https://storage.ko-fi.com/cdn/kofi5.png"
-            alt="Buy Me a Coffee at ko-fi.com"
-          />
-        </a>
-      </div>
-    </div>
+		<div class="doc-prose reveal">
+			<p>Drop in a link and Loopretto pulls the audio into a distraction-free space &mdash; loop any
+				phrase, slow it down without changing pitch, transpose the key, find the root, and jam along on
+				the built-in piano. Whether you're transcribing a solo or just chasing a lick, it helps you
+				<em>learn by feel</em>.</p>
+		</div>
 
-    <div class="mt-8 text-center">
-      <a
-        href="/"
-        class="inline-block bg-[#028090] text-white font-bold px-6 py-3 rounded-lg shadow-md hover:bg-[#2980b9] transition duration-300"
-      >
-        ← Back to App
-      </a>
-    </div>
-  </body>
+		<div class="feature-grid">
+			<div class="feature">
+				<span class="f-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M17 3l3 3-3 3" />
+						<path d="M20 6H9a5 5 0 0 0 0 10h1" />
+						<path d="M7 21l-3-3 3-3" />
+						<path d="M4 18h11a5 5 0 0 0 0-10h-1" />
+					</svg>
+				</span>
+				<span>Loop any section</span>
+			</div>
+			<div class="feature">
+				<span class="f-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M5.6 19a9 9 0 1 1 12.8 0" />
+						<path d="M12 13l4-3.5" />
+					</svg>
+				</span>
+				<span>Slow down, same pitch</span>
+			</div>
+			<div class="feature">
+				<span class="f-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M12 4v16" />
+						<path d="M8 8l4-4 4 4" />
+						<path d="M8 16l4 4 4-4" />
+					</svg>
+				</span>
+				<span>Transpose the key</span>
+			</div>
+			<div class="feature">
+				<span class="f-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 18V5l12-2v13" />
+						<circle cx="6" cy="18" r="3" />
+						<circle cx="18" cy="16" r="3" />
+					</svg>
+				</span>
+				<span>Root + reference piano</span>
+			</div>
+			<div class="feature">
+				<span class="f-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 4h6l3.5 16h-13L9 4z" />
+						<path d="M5.5 15h13" />
+						<path d="M12 14l3.5-7" />
+					</svg>
+				</span>
+				<span>Metronome &amp; drone</span>
+			</div>
+			<div class="feature">
+				<span class="f-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M12 3l8 4v5c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V7l8-4z" />
+						<path d="M9 12l2 2 4-4" />
+					</svg>
+				</span>
+				<span>100% local &amp; private</span>
+			</div>
+		</div>
+
+		<div class="doc-foot reveal">
+			<p>Built by <a href="https://cristiangabriel.dev" target="_blank" rel="noopener">Cristian Gabriel</a>
+				&mdash; a musician &amp; developer. It runs entirely on your machine: no accounts, no uploads,
+				nothing leaves your computer.</p>
+			<p>Ideas or feedback? <a href="mailto:me@cristiangabriel.dev">me@cristiangabriel.dev</a></p>
+			<div class="kofi">
+				<span>Enjoying it?</span>
+				<a href="https://ko-fi.com/cristian_gabriel/?amount=5" target="_blank" rel="noopener"
+					title="Buy Me a Coffee">
+					<img src="https://storage.ko-fi.com/cdn/kofi5.png" alt="Buy Me a Coffee at ko-fi.com" />
+				</a>
+			</div>
+		</div>
+	</div>
+</body>
+
 </html>

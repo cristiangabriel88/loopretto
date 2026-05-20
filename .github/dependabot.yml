@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # Keep Python deps fresh - especially yt-dlp, which goes stale fast as
+  # YouTube changes its extractors (§8.3). Dependabot reads requirements.in
+  # (the manifest) and updates the requirements.txt lockfile.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      python-deps:
+        patterns:
+          - "*"

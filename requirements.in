@@ -1,0 +1,13 @@
+# Loopretto - top-level (direct) dependencies only. This is the manifest;
+# requirements.txt is the resolved lockfile (with transitive pins).
+#
+# Regenerate the lockfile after editing this file:
+#   uv pip compile requirements.in -o requirements.txt
+#
+# yt-dlp is a RANGE, not a pin, on purpose: YouTube changes its extractors
+# often, so a stale yt-dlp pin silently breaks downloads (§8.3). Keep it a
+# range in the lockfile too.
+Flask==3.1.3
+Flask-Limiter==3.12
+imageio-ffmpeg==0.5.1
+yt-dlp>=2026.02.21,<2027

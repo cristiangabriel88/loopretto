@@ -1,3 +1,8 @@
+# Lockfile - pinned transitive set for reproducible installs.
+# Top-level (direct) dependencies live in requirements.in (the manifest).
+# Regenerate after changing the manifest:
+#   uv pip compile requirements.in -o requirements.txt
+# Then keep yt-dlp as a range (see below / requirements.in, §8.3).
 blinker==1.9.0
 click==8.2.1
 colorama==0.4.6
@@ -18,4 +23,7 @@ rich==13.9.4
 typing_extensions==4.14.0
 Werkzeug==3.1.5
 wrapt==1.17.2
-yt-dlp==2026.02.21
+# Intentionally a range, not a pin - YouTube breaks extractors often, so a
+# stale yt-dlp silently breaks downloads (§8.3). A fresh install picks the
+# latest 2026.x; Dependabot keeps it moving (see .github/dependabot.yml).
+yt-dlp>=2026.02.21,<2027

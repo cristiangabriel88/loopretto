@@ -23,5 +23,9 @@ audio.info.json
 .DS_Store
 Thumbs.db
 
-# Node (tailwind build artifacts)
+# Node (legacy tailwind build artifacts)
 node_modules/
+
+# Stray run logs
+app.err
+app.out

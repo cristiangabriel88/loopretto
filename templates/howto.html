@@ -4,94 +4,166 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>How to Use Loopretto</title>
-	<script src="https://cdn.tailwindcss.com"></script>
-	<!-- Favicon for most browsers -->
+	<title>How to use Loopretto</title>
+
+	<!-- Apply the theme + accent the user picked in the app, before paint. -->
+	<script>
+		(function () {
+			try {
+				var themes = ["theme-light", "theme-dim", "theme-dark"];
+				var t = localStorage.getItem("loopretto.theme");
+				document.documentElement.classList.add(themes.indexOf(t) >= 0 ? t : "theme-dim");
+				var a = localStorage.getItem("loopretto.accent");
+				if (a) document.documentElement.style.setProperty("--accent-raw", a);
+			} catch (e) {
+				document.documentElement.classList.add("theme-dim");
+			}
+		})();
+	</script>
+
+	<!-- Favicons -->
 	<link rel="icon" type="image/png" sizes="32x32"
 		href="{{ url_for('static', filename='images/favicon/favicon-32x32.png') }}" />
 	<link rel="icon" type="image/png" sizes="16x16"
 		href="{{ url_for('static', filename='images/favicon/favicon-16x16.png') }}" />
 	<link rel="shortcut icon" href="{{ url_for('static', filename='images/favicon/favicon.ico') }}" />
-
-	<!-- Apple Touch Icon -->
 	<link rel="apple-touch-icon" sizes="180x180"
 		href="{{ url_for('static', filename='images/favicon/apple-touch-icon.png') }}" />
-
-	<!-- Android Chrome -->
-	<link rel="icon" type="image/png" sizes="192x192"
-		href="{{ url_for('static', filename='images/favicon/android-chrome-192x192.png') }}" />
-	<link rel="icon" type="image/png" sizes="512x512"
-		href="{{ url_for('static', filename='images/favicon/android-chrome-512x512.png') }}" />
-
-	<!-- Manifest for PWA support -->
 	<link rel="manifest" href="{{ url_for('static', filename='images/favicon/site.webmanifest') }}" />
+
+	<!-- Fonts -->
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-	<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap" rel="stylesheet" />
-	<style>
-		body {
-			font-family: "Comfortaa", cursive;
-			background: rgb(25, 53, 73);
-		}
-	</style>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+		rel="stylesheet" />
+
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 </head>
 
-<body class="text-white min-h-screen p-8">
-	<div class="max-w-6xl mx-auto bg-white bg-opacity-10 backdrop-blur-md rounded-2xl px-8 py-4 shadow-xl">
-		<div class="flex justify-left items-center mb-6">
-			<img src="{{ url_for('static', filename='images/transparent-icon.png') }}" alt="Loopretto Icon"
-				class="w-24 h-24" />
-			<h1 class="text-5xl font-bold text-white ml-2">How to Use Loopretto</h1>
+<body>
+	<div class="doc-shell">
+		<div class="doc-topbar reveal">
+			<a class="brand" href="/">
+				<img class="brand-icon on-dark"
+					src="{{ url_for('static', filename='images/logo-mark-light.png') }}" alt="Loopretto" />
+				<img class="brand-icon on-light"
+					src="{{ url_for('static', filename='images/logo-mark.png') }}" alt="Loopretto" />
+			</a>
+			<a class="doc-back" href="/">&larr; Back to app</a>
 		</div>
 
-		<!-- <h2 class="text-3xl font-semibold mb-4 mt-8 text-white">Key Features</h2> -->
-		<ul class="text-lg list-disc list-inside text-gray-100 space-y-2">
-			<li>
-				🎧 Paste a YouTube URL in the input field and click
-				<strong>Load Audio</strong>.
-			</li>
-			<li>
-				🔊 Click anywhere on the waveform to set a start point. Then press the
-				<strong>Spacebar</strong> to play. Press the <strong>Spacebar</strong> again to pause and return to the
-				clicked point.
-				Move left <strong>←</strong> and right <strong>→</strong> with the arrow keys.
-			</li>
+		<div class="doc-hero">
+			<span class="doc-eyebrow reveal">How to use</span>
+			<h1 class="doc-title reveal">Loop it. Slow it. <em>Nail it.</em></h1>
+			<p class="doc-lede reveal">Six moves &mdash; that's the whole app.</p>
+		</div>
 
-			<li>
-				🔁 Click anywhere on the waveform to set a start point. Then click
-				<strong>Loop section</strong> to loop a segment and use the mouse to
-				drag the ends of the segment.
-			</li>
-			<li>
-				⏩ Use the <strong>speed controls</strong> to slow down or speed up
-				playback.
-			</li>
-			<li>
-				🎹 Toggle the <strong>Piano view</strong> to find notes by ear. You
-				can play it with your keyboard: Z to M for white keys, and S, D, G, H,
-				J for black keys.
-			</li>
-			<li>
-				📥 You can <strong>download the audio</strong> using the download
-				button.
-			</li>
-			<li>
-				🧠 Activate <strong>Focus Mode</strong> for a fullscreen transcription
-				session.
-			</li>
-		</ul>
+		<div class="steps">
+			<div class="step">
+				<span class="step-num">01</span>
+				<span class="step-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 17H7A5 5 0 0 1 7 7h2" />
+						<path d="M15 7h2a5 5 0 0 1 0 10h-2" />
+						<line x1="8" y1="12" x2="16" y2="12" />
+					</svg>
+				</span>
+				<div class="step-body">
+					<h3>Drop a link</h3>
+					<p>Paste a YouTube, SoundCloud or Bandcamp link &mdash; or drag in a file.</p>
+				</div>
+			</div>
 
-		<p class="text-lg mt-6 text-gray-100 leading-relaxed">
-			Loopretto runs right in your browser — no installations, no ads, no
-			clutter. Just music and tools that help you learn by ear — better and
-			faster.
-		</p>
-	</div>
-	<div class="mt-8 text-center">
-		<a href="/"
-			class="inline-block bg-[#028090] text-white font-bold px-6 py-3 rounded-lg shadow-md hover:bg-[#2980b9] transition duration-300">
-			← Back to App
-		</a>
+			<div class="step">
+				<span class="step-num">02</span>
+				<span class="step-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="8" />
+						<path d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+						<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+					</svg>
+				</span>
+				<div class="step-body">
+					<h3>Mark the spot</h3>
+					<p>Click the waveform where you want to start.</p>
+				</div>
+			</div>
+
+			<div class="step">
+				<span class="step-num">03</span>
+				<span class="step-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M17 3l3 3-3 3" />
+						<path d="M20 6H9a5 5 0 0 0 0 10h1" />
+						<path d="M7 21l-3-3 3-3" />
+						<path d="M4 18h11a5 5 0 0 0 0-10h-1" />
+					</svg>
+				</span>
+				<div class="step-body">
+					<h3>Loop a phrase</h3>
+					<p>Hit <em>Loop</em>, then drag the edges to fit.</p>
+				</div>
+			</div>
+
+			<div class="step">
+				<span class="step-num">04</span>
+				<span class="step-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M5.6 19a9 9 0 1 1 12.8 0" />
+						<path d="M12 13l4-3.5" />
+					</svg>
+				</span>
+				<div class="step-body">
+					<h3>Slow it down</h3>
+					<p>Tap <em>Speed &minus;</em>. The pitch stays put.</p>
+				</div>
+			</div>
+
+			<div class="step">
+				<span class="step-num">05</span>
+				<span class="step-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 18V5l12-2v13" />
+						<circle cx="6" cy="18" r="3" />
+						<circle cx="18" cy="16" r="3" />
+					</svg>
+				</span>
+				<div class="step-body">
+					<h3>Find the notes</h3>
+					<p>Open the <em>Piano</em>, or <em>Notes</em> to read the root.</p>
+				</div>
+			</div>
+
+			<div class="step">
+				<span class="step-num">06</span>
+				<span class="step-ic">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<path d="M9 4h6l3.5 16h-13L9 4z" />
+						<path d="M5.5 15h13" />
+						<path d="M12 14l3.5-7" />
+					</svg>
+				</span>
+				<div class="step-body">
+					<h3>Drill it</h3>
+					<p>Metronome, drone, reps &amp; memorize live in <em>Practice</em>.</p>
+				</div>
+			</div>
+		</div>
+
+		<div class="shortcuts reveal">
+			<span class="sc-label">Keys</span>
+			<span class="sc"><kbd>Space</kbd> play</span>
+			<span class="sc"><kbd>&larr;</kbd><kbd>&rarr;</kbd> nudge</span>
+			<span class="sc"><kbd>z</kbd>&ndash;<kbd>m</kbd> piano</span>
+			<span class="sc"><kbd>s</kbd><kbd>d</kbd><kbd>g</kbd><kbd>h</kbd><kbd>j</kbd> sharps</span>
+		</div>
 	</div>
 </body>
 
