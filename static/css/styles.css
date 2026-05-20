@@ -1141,10 +1141,13 @@ body.minimal-start .suggested { display: none; }
   border-color: var(--accent-line);
 }
 
-/* Panels glide in when their tab is picked */
+/* Panels glide in when their tab is picked: a crisp fade + small rise/settle.
+   Every section is pinned to --section-min-h (the tallest panel, measured in
+   app.js) so the card never resizes between tabs and the page stays put. */
 @keyframes panelReveal {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(-10px) scale(0.99); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: none; }
 }
 
 .piano-toggle {
@@ -1181,8 +1184,9 @@ body.minimal-start .suggested { display: none; }
   box-shadow: var(--shadow-card);
   overflow: hidden;
   display: none;
+  min-height: var(--section-min-h, auto);
 }
-.piano-card.show { display: block; animation: panelReveal 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.piano-card.show { display: block; animation: panelReveal 0.26s cubic-bezier(0.16, 0.84, 0.3, 1); }
 .piano-head {
   display: flex;
   justify-content: space-between;
@@ -1337,8 +1341,9 @@ body.minimal-start .suggested { display: none; }
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   display: none;
+  min-height: var(--section-min-h, auto);
 }
-.metro-card.show { display: block; animation: panelReveal 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.metro-card.show { display: block; animation: panelReveal 0.26s cubic-bezier(0.16, 0.84, 0.3, 1); }
 .metro-head {
   display: flex;
   justify-content: space-between;

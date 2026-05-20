@@ -801,6 +801,9 @@ function revealPlayer(title, thumbnail) {
   setControlsEnabled(true);
   window.currentAudioTitle = title || "audio";
   updateSaveSetlistButton();
+  // Pin all sections to a common height now the strip is visible, so the very
+  // first tab switch is already flicker-free.
+  syncSectionHeights();
 }
 
 // ----- Local file source (drag & drop / file picker), skips /get_audio -----
@@ -1641,9 +1644,32 @@ function selectSection(panel, btn) {
   moveTabIndicator();
 }
 
-// Reposition the pill if the viewport reflows the tab widths.
+// Pin every section panel to the height of the tallest one, so switching tabs
+// never resizes the card and the page below it doesn't jump. We briefly render
+// each hidden panel (kept invisible, no paint happens mid-task) to read its
+// natural height with the floor removed, then publish the max as --section-min-h.
+function syncSectionHeights() {
+  if (!sectionTabs || sectionTabs.classList.contains("hidden")) return;
+  const root = document.documentElement;
+  root.style.setProperty("--section-min-h", "0px"); // measure natural heights, not the floor
+  let max = 0;
+  getSectionPanels().forEach(([p]) => {
+    if (!p) return;
+    const shown = p.classList.contains("show");
+    if (!shown) { p.style.visibility = "hidden"; p.classList.add("show"); }
+    max = Math.max(max, p.offsetHeight);
+    if (!shown) { p.classList.remove("show"); p.style.visibility = ""; }
+  });
+  root.style.setProperty("--section-min-h", max > 0 ? `${max}px` : "auto");
+}
+
+// Reposition the pill and re-pin the shared height when the viewport reflows.
+let _heightSyncRaf = 0;
 window.addEventListener("resize", () => {
-  if (sectionTabs && !sectionTabs.classList.contains("hidden")) moveTabIndicator();
+  if (!sectionTabs || sectionTabs.classList.contains("hidden")) return;
+  moveTabIndicator();
+  if (_heightSyncRaf) cancelAnimationFrame(_heightSyncRaf);
+  _heightSyncRaf = requestAnimationFrame(syncSectionHeights);
 });
 
 // ----- Pitch shift (transpose, tempo unchanged) -----
