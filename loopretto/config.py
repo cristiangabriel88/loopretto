@@ -17,12 +17,21 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+def _bool_env(name: str, default: bool = False) -> bool:
+    """Read a boolean env var. Accepts the common truthy spellings (1/true/yes/on,
+    case-insensitive) so e.g. ``RATE_LIMIT_ENABLED=1`` works as documented."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 class Config:
     # --- Network ---
     PORT: int = _int_env("PORT", 5000)
 
     # --- Optional shared-secret gate (dormant by default for local use) ---
-    REQUIRE_SECRET: bool = os.environ.get("REQUIRE_SECRET", "false").lower() == "true"
+    REQUIRE_SECRET: bool = _bool_env("REQUIRE_SECRET", False)
     APP_SECRET: str = os.environ.get("APP_SECRET", "loopmania")
 
     # --- Download guardrails ---
@@ -49,7 +58,7 @@ class Config:
     # --- Rate limiting (in-process memory; resets on restart, fine for local) ---
     # Off by default: this is a single-user local app, so the "Too Many Requests"
     # wall just gets in the way. Set RATE_LIMIT_ENABLED=1 to turn it back on.
-    RATE_LIMIT_ENABLED: bool = os.environ.get("RATE_LIMIT_ENABLED", "false").lower() == "true"
+    RATE_LIMIT_ENABLED: bool = _bool_env("RATE_LIMIT_ENABLED", False)
     RATE_LIMITS = ["3 per minute", "10 per hour", "20 per day"]
     GET_AUDIO_RATE_LIMIT = "5 per minute"
 

@@ -2009,6 +2009,7 @@ const droneVoices = [1, 2, 3].map((i) => ({
   nodes: null,
 }));
 const droneOctaveDown = $("drone-octave-down");
+const dronePluck = $("drone-pluck");
 const droneVol = $("drone-vol");
 
 function fmtClock(ms) {
@@ -2318,11 +2319,31 @@ function updateMemorizeDisplay() {
 }
 memorizeToggle.addEventListener("click", () => { setMemorize(!memorizeOn); });
 
-// --- Drone: up to three sustained reference pitches (a chord), bypass masterGain ---
+// --- Drone: up to three tanpura-like reference pitches (a chord), bypass masterGain ---
 const NOTE_INDEX = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
-// Shared output: every voice feeds one lowpass -> Vol gain -> destination, bypassing
-// masterGain so memorize fade / transpose never touch the reference pitches.
+// Shared output: every voice feeds the jivari-shimmer filter -> warmth lowpass ->
+// Vol gain -> destination, bypassing masterGain so memorize fade / transpose never
+// touch the reference pitches.
 let droneBus = null;
+let droneWave = null;
+const PLUCK_PERIOD = 3.0; // seconds between re-plucks (staggered per voice)
+
+// A tanpura's tone is a strong fundamental plus a dense band of upper harmonics that
+// the "jivari" thread excites into a shimmering buzz. We bake that into one PeriodicWave:
+// a gentle rolloff for body, with a resonant bump around the 8th-12th harmonics.
+function tanpuraWave() {
+  if (droneWave) return droneWave;
+  const N = 32;
+  const real = new Float32Array(N + 1);
+  const imag = new Float32Array(N + 1);
+  for (let n = 1; n <= N; n++) {
+    let amp = Math.pow(n, -1.35);                                  // body / harmonic rolloff
+    amp += 0.6 * Math.exp(-Math.pow((n - 10) / 5, 2)) / Math.sqrt(n); // jivari buzz band
+    imag[n] = amp; // imag-only -> sine phase
+  }
+  droneWave = audioCtx.createPeriodicWave(real, imag);
+  return droneWave;
+}
 
 function ensureDroneBus() {
   ensureAudioGraph();
@@ -2331,11 +2352,28 @@ function ensureDroneBus() {
     const out = audioCtx.createGain();
     out.gain.value = Number(droneVol.value) / 100;
     out.connect(audioCtx.destination);
+    // Warmth lowpass so the buzzy upper partials stay sweet, not harsh.
     const lp = audioCtx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.value = 2200;
+    lp.frequency.value = 3400;
+    lp.Q.value = 0.4;
     lp.connect(out);
-    droneBus = { lp, out };
+    // Jivari shimmer: a peaking filter slowly swept by an LFO so the overtones
+    // "breathe" the way a real tanpura's jivari does. Voices feed this node.
+    const shimmer = audioCtx.createBiquadFilter();
+    shimmer.type = "peaking";
+    shimmer.frequency.value = 1800;
+    shimmer.Q.value = 0.9;
+    shimmer.gain.value = 7;
+    shimmer.connect(lp);
+    const lfo = audioCtx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.06; // ~16s sweep
+    const lfoDepth = audioCtx.createGain();
+    lfoDepth.gain.value = 1300;
+    lfo.connect(lfoDepth).connect(shimmer.frequency);
+    lfo.start();
+    droneBus = { input: shimmer, shimmer, lp, out, lfo };
   }
   return true;
 }
@@ -2344,42 +2382,85 @@ function voiceFreq(v) {
   const midi = (octave + 1) * 12 + (NOTE_INDEX[v.note.value] || 0);
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
+// Re-pluck: a quick swell then a slow decay toward a sustain floor (the string never
+// fully dies before the next pluck), mimicking a tanpura's repeating stroke.
+function pluckVoice(v, when) {
+  if (!v.nodes) return;
+  const g = v.nodes.vg.gain;
+  const t = when != null ? when : audioCtx.currentTime;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(Math.max(g.value, 0.0001), t);
+  g.linearRampToValueAtTime(0.9, t + 0.05);   // pluck attack
+  g.setTargetAtTime(0.5, t + 0.05, 1.4);      // decay toward sustain floor
+}
 function startVoiceNodes(v) {
   if (!ensureDroneBus()) return;
   stopVoiceNodes(v, true);
-  const vg = audioCtx.createGain(); // per-voice gain ramps for click-free start/stop
+  const vg = audioCtx.createGain(); // per-voice gain: envelope + click-free start/stop
   vg.gain.value = 0;
-  vg.connect(droneBus.lp);
+  vg.connect(droneBus.input);
   const f = voiceFreq(v);
-  const osc = audioCtx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.value = f;
-  osc.connect(vg);
-  osc.start();
-  let oscOct = null;
+  const wave = tanpuraWave();
+  // Two voices detuned a few cents -> a living chorus shimmer; kept small so the
+  // reference pitch stays true.
+  const oscs = [-4, 4].map((cents) => {
+    const o = audioCtx.createOscillator();
+    o.setPeriodicWave(wave);
+    o.frequency.value = f;
+    o.detune.value = cents;
+    o.connect(vg);
+    o.start();
+    return o;
+  });
   if (droneOctaveDown.checked) {
-    oscOct = audioCtx.createOscillator();
-    oscOct.type = "sine";
+    const oscOct = audioCtx.createOscillator();
+    oscOct.setPeriodicWave(wave);
     oscOct.frequency.value = f / 2;
     const og = audioCtx.createGain();
-    og.gain.value = 0.7;
+    og.gain.value = 0.55;
     oscOct.connect(og).connect(vg);
     oscOct.start();
+    oscs.push(oscOct);
   }
-  vg.gain.setTargetAtTime(1, audioCtx.currentTime, 0.04);
-  v.nodes = { osc, oscOct, vg };
+  v.nodes = { oscs, vg, timer: null, startTimer: null };
+  if (!dronePluck.checked) {
+    vg.gain.setTargetAtTime(0.7, audioCtx.currentTime, 0.05); // steady sustained tone
+  }
+  // Pluck timing (the repeating stroke) is owned by armPluckTimers(), called by the
+  // higher-level handlers, so the voices stay phase-staggered relative to each other.
+}
+function clearVoiceTimers(n) {
+  if (!n) return;
+  if (n.timer) { clearInterval(n.timer); n.timer = null; }
+  if (n.startTimer) { clearTimeout(n.startTimer); n.startTimer = null; }
 }
 function stopVoiceNodes(v, immediate) {
   if (!v.nodes) return;
   const n = v.nodes;
   v.nodes = null;
+  clearVoiceTimers(n);
+  try { n.vg.gain.cancelScheduledValues(audioCtx.currentTime); } catch (e) {}
   try { n.vg.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04); } catch (e) {}
-  const stop = () => {
-    try { n.osc.stop(); } catch (e) {}
-    try { if (n.oscOct) n.oscOct.stop(); } catch (e) {}
-  };
+  const stop = () => { n.oscs.forEach((o) => { try { o.stop(); } catch (e) {} }); };
   if (immediate) stop();
-  else setTimeout(stop, 150);
+  else setTimeout(stop, 200);
+}
+// (Re)arm the repeating pluck on every active voice, staggered so they stroke in
+// sequence (like a real tanpura) rather than all at once.
+function armPluckTimers() {
+  droneVoices.forEach((v) => clearVoiceTimers(v.nodes));
+  if (!dronePluck.checked || !audioCtx) return;
+  const active = droneVoices.filter((v) => v.on && v.nodes);
+  const spacingMs = (PLUCK_PERIOD / Math.max(active.length, 1)) * 1000;
+  active.forEach((v, i) => {
+    const offsetMs = i * spacingMs;
+    pluckVoice(v, audioCtx.currentTime + offsetMs / 1000); // initial staggered stroke
+    v.nodes.startTimer = setTimeout(() => {
+      if (!v.nodes) return;
+      v.nodes.startTimer = null;
+      v.nodes.timer = setInterval(() => pluckVoice(v), PLUCK_PERIOD * 1000);
+    }, offsetMs);
+  });
 }
 function setVoice(v, on) {
   v.on = on;
@@ -2389,16 +2470,21 @@ function setVoice(v, on) {
   if (on) startVoiceNodes(v);
   else stopVoiceNodes(v, false);
   droneOn = droneVoices.some((x) => x.on);
+  armPluckTimers();
 }
 // setDrone(false) is the teardown hook (stops every voice); setDrone(true) restarts active ones.
 function setDrone(on) {
   if (!on) { droneVoices.forEach((v) => setVoice(v, false)); return; }
+  restartActiveVoices();
+}
+function restartActiveVoices() {
   droneVoices.forEach((v) => { if (v.on) startVoiceNodes(v); });
+  armPluckTimers();
 }
 droneVoices.forEach((v) => {
   v.toggle.addEventListener("click", () => setVoice(v, !v.on));
   [v.note, v.octave].forEach((el) => {
-    el.addEventListener("change", () => { if (v.on) startVoiceNodes(v); });
+    el.addEventListener("change", () => { if (v.on) { startVoiceNodes(v); armPluckTimers(); } });
   });
 });
 droneVol.addEventListener("input", () => {
@@ -2406,9 +2492,8 @@ droneVol.addEventListener("input", () => {
     droneBus.out.gain.setTargetAtTime(Number(droneVol.value) / 100, audioCtx.currentTime, 0.02);
   }
 });
-droneOctaveDown.addEventListener("change", () => {
-  droneVoices.forEach((v) => { if (v.on) startVoiceNodes(v); });
-});
+droneOctaveDown.addEventListener("change", restartActiveVoices);
+dronePluck.addEventListener("change", restartActiveVoices);
 showDroneButton.addEventListener("click", () => { selectSection(droneBody, showDroneButton); });
 
 // --- Journal ---

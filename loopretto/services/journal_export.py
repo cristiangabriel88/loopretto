@@ -11,20 +11,21 @@ import os
 from ..config import Config
 
 
-def save_journal(markdown: str, data_json: str) -> dict:
-    """Write practice-journal.md + practice-data.json; return {dir, files}."""
+def save_journal(markdown: str, data: object) -> dict:
+    """Write practice-journal.md + practice-data.json; return {dir, files}.
+
+    ``data`` is the already-parsed practice JSON (the route validates it before
+    calling); it is re-dumped here pretty-printed as the backup file.
+    """
     os.makedirs(Config.PRACTICE_JOURNAL_DIR, exist_ok=True)
 
     md_path = os.path.join(Config.PRACTICE_JOURNAL_DIR, "practice-journal.md")
     json_path = os.path.join(Config.PRACTICE_JOURNAL_DIR, "practice-data.json")
 
-    # Re-dump the JSON so the backup file is pretty-printed and validated
-    # (a malformed body raises ValueError, mapped to a 500 by the route).
-    parsed = json.loads(data_json)
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(markdown)
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(parsed, f, indent=2, ensure_ascii=False)
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
     return {
         "dir": Config.PRACTICE_JOURNAL_DIR,

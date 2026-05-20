@@ -6,6 +6,8 @@ the Markdown and ships the raw localStorage JSON; this route just persists both.
 """
 from __future__ import annotations
 
+import json
+
 from flask import Blueprint, Response, current_app, jsonify, request
 
 from ..config import Config
@@ -25,9 +27,16 @@ def save_journal_route() -> Response | tuple[Response, int]:
     if len(markdown) + len(data_json) > Config.MAX_JOURNAL_BYTES:
         return jsonify({"error": "Journal too large"}), 400
 
+    # Validate the backup payload here so malformed JSON is a client error (400),
+    # not a server error - and we don't echo the parser's internals back.
     try:
-        result = save_journal(markdown, data_json)
-    except (OSError, ValueError) as exc:
+        parsed = json.loads(data_json)
+    except ValueError:
+        return jsonify({"error": "Invalid journal data"}), 400
+
+    try:
+        result = save_journal(markdown, parsed)
+    except OSError as exc:
         current_app.logger.exception("Practice journal save failed")
         return jsonify({"error": str(exc)}), 500
 
