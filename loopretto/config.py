@@ -38,6 +38,9 @@ class Config:
     AUDIO_BASENAME: str = "audio"
 
     # --- Rate limiting (in-process memory; resets on restart, fine for local) ---
+    # Off by default: this is a single-user local app, so the "Too Many Requests"
+    # wall just gets in the way. Set RATE_LIMIT_ENABLED=1 to turn it back on.
+    RATE_LIMIT_ENABLED: bool = os.environ.get("RATE_LIMIT_ENABLED", "false").lower() == "true"
     RATE_LIMITS = ["3 per minute", "10 per hour", "20 per day"]
     GET_AUDIO_RATE_LIMIT = "5 per minute"
 

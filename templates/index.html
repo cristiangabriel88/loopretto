@@ -42,7 +42,6 @@
 	<script src="{{ url_for('static', filename='js/pitch-detect.js') }}" defer></script>
 	<script src="{{ url_for('static', filename='js/metronome.js') }}" defer></script>
 	<script src="{{ url_for('static', filename='js/practice.js') }}" defer></script>
-	<script src="{{ url_for('static', filename='js/audio-export.js') }}" defer></script>
 	<script src="{{ url_for('static', filename='js/tempo.js') }}" defer></script>
 	<script src="{{ url_for('static', filename='js/setlists.js') }}" defer></script>
 	<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
@@ -65,7 +64,9 @@
 					<span style="opacity:0.5">·</span>
 					<kbd>&larr;</kbd><kbd>&rarr;</kbd> nudge
 					<span style="opacity:0.5">·</span>
-					<kbd>?</kbd> shortcuts
+					<button type="button" class="kbd-hint-link" id="shortcuts-open" title="Show keyboard shortcuts">
+						<kbd>?</kbd> shortcuts
+					</button>
 				</div>
 				<div class="menu-wrap">
 					<button class="icon-btn" id="menuToggle" aria-label="Menu">
@@ -129,8 +130,8 @@
 						<div class="menu-section">
 							<div class="menu-section-label">Accent</div>
 							<div class="accent-row" id="accent-row">
-								<button class="accent-dot" type="button" aria-label="Violet"
-									data-accent="oklch(0.66 0.1 290)" style="--c:oklch(0.66 0.1 290)"></button>
+								<button class="accent-dot accent-default" type="button" aria-label="Theme default"
+									data-accent="default" title="Theme default"></button>
 								<button class="accent-dot" type="button" aria-label="Indigo"
 									data-accent="oklch(0.63 0.09 264)" style="--c:oklch(0.63 0.09 264)"></button>
 								<button class="accent-dot" type="button" aria-label="Teal"
@@ -258,8 +259,8 @@
 				<button type="button" class="chip" data-url="https://youtube.com/watch?v=kHInwkOJm24">
 					<span class="dot"></span> Stevie Wonder &mdash; Isn't She Lovely
 				</button>
-				<button type="button" class="chip" data-url="https://youtube.com/watch?v=gCARYHv6sdY">
-					<span class="dot"></span> Autumn Leaves &mdash; Jam Track
+				<button type="button" class="chip" data-url="https://youtube.com/watch?v=-DHuW1h1wHw">
+					<span class="dot"></span> Dave Brubeck &mdash; Take Five
 				</button>
 			</div>
 
@@ -380,7 +381,30 @@
 						<span class="note-tag-label">root</span>
 						<span id="note-root">&mdash;</span>
 					</span>
-					<span class="tag" id="zoom-tag">0% zoom</span>
+					<button class="piano-toggle" id="showNotesButton" title="Detect the root note being played" aria-pressed="false" disabled>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+							stroke-linejoin="round">
+							<path d="M9 18V5l12-2v13" />
+							<circle cx="6" cy="18" r="3" />
+							<circle cx="18" cy="16" r="3" />
+						</svg>
+						Notes
+					</button>
+					<div class="control-group wave-zoom" title="Waveform zoom">
+						<span class="label">Zoom</span>
+						<div class="zoom-range-wrap">
+							<input class="zoom-range" id="zoom-range" type="range" min="0" max="100" step="10" value="0"
+								aria-label="Waveform zoom" aria-valuetext="0%" disabled />
+							<span class="stepper-value" id="zoom-display" style="min-width:38px">0%</span>
+							<button class="stepper-btn" id="zoom-reset" title="Reset zoom (fit whole track)" aria-label="Reset zoom" disabled>
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+									stroke-linecap="round" stroke-linejoin="round">
+									<circle cx="11" cy="11" r="7" />
+									<path d="M8 11h6M21 21l-4.3-4.3" />
+								</svg>
+							</button>
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -438,20 +462,6 @@
 					<span class="stepper-value" id="pitch-display">0</span>
 					<button class="stepper-btn" id="pitch-up" aria-label="Transpose up a semitone" disabled>+</button>
 				</div>
-				<div class="control-group" title="Waveform zoom">
-					<span class="label">Zoom</span>
-					<div class="zoom-range-wrap">
-						<input class="zoom-range" id="zoom-range" type="range" min="0" max="100" step="10" value="0"
-							aria-label="Waveform zoom" aria-valuetext="0%" disabled />
-						<span class="stepper-value" id="zoom-display" style="min-width:38px">0%</span>
-						<button class="stepper-btn" id="zoom-to-loop" title="Zoom to fit the loop" aria-label="Zoom to loop" disabled>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-								stroke-linecap="round" stroke-linejoin="round">
-								<path d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M8 20H5a1 1 0 0 1-1-1v-3M16 20h3a1 1 0 0 0 1-1v-3" />
-							</svg>
-						</button>
-					</div>
-				</div>
 				<div class="control-group" title="Channel / vocal isolation">
 					<span class="label">Audio</span>
 					<div class="seg" id="channel-seg" role="group" aria-label="Channel mode">
@@ -468,55 +478,78 @@
 				</div>
 			</div>
 
-			<div class="right-cluster">
-				<button class="piano-toggle" id="showFxButton" title="EQ, band-pass spotlight & compressor" aria-pressed="false" disabled>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
-						stroke-linejoin="round">
-						<path d="M6 3v6M6 13v8M12 3v10M12 17v4M18 3v4M18 11v10" />
-						<circle cx="6" cy="11" r="2" />
-						<circle cx="12" cy="15" r="2" />
-						<circle cx="18" cy="9" r="2" />
-					</svg>
-					Sound
-				</button>
-				<button class="piano-toggle" id="showPracticeButton" title="Practice tools" aria-pressed="false" disabled>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
-						stroke-linejoin="round">
-						<circle cx="12" cy="13" r="8" />
-						<path d="M12 13V9" />
-						<path d="M9 2h6" />
-					</svg>
-					Practice
-				</button>
-				<button class="piano-toggle" id="showNotesButton" title="Detect the pitch being played" aria-pressed="false" disabled>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
-						stroke-linejoin="round">
-						<path d="M9 18V5l12-2v13" />
-						<circle cx="6" cy="18" r="3" />
-						<circle cx="18" cy="16" r="3" />
-					</svg>
-					Notes
-				</button>
-				<button class="piano-toggle" id="showMetronomeButton" title="Metronome" aria-pressed="false" disabled>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
-						stroke-linejoin="round">
-						<path d="M6 21h12L15 4H9L6 21z" />
-						<path d="M5 16h14" />
-						<path d="M12 14l5-7" />
-					</svg>
-					Metronome
-				</button>
-				<button class="piano-toggle" id="showPianoButton" aria-pressed="false" disabled>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-						stroke-linejoin="round">
-						<rect x="3" y="5" width="18" height="14" rx="2" />
-						<path d="M8 5v9M12 5v9M16 5v9" />
-						<rect x="6.6" y="5" width="2.2" height="6" rx="0.5" fill="currentColor" />
-						<rect x="10.9" y="5" width="2.2" height="6" rx="0.5" fill="currentColor" />
-						<rect x="15.2" y="5" width="2.2" height="6" rx="0.5" fill="currentColor" />
-					</svg>
-					Piano
-				</button>
+		</div>
+
+		<!-- Section tabs: a single strip below the transport. Picking one opens its
+		     panel and closes the rest; clicking the active tab collapses it. The
+		     sliding indicator glides behind the active tab (positioned in app.js). -->
+		<div class="section-tabs hidden" id="section-tabs" role="tablist" aria-label="Practice tools">
+			<div class="tabs-scroll">
+				<div class="tabs-track" id="tabs-track">
+					<span class="tab-indicator" id="tab-indicator" aria-hidden="true"></span>
+					<button class="section-tab" id="showFxButton" type="button" role="tab"
+						aria-selected="false" aria-controls="fx-body" title="EQ, band-pass spotlight & compressor" disabled>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+							stroke-linecap="round" stroke-linejoin="round">
+							<path d="M6 3v6M6 13v8M12 3v10M12 17v4M18 3v4M18 11v10" />
+							<circle cx="6" cy="11" r="2" />
+							<circle cx="12" cy="15" r="2" />
+							<circle cx="18" cy="9" r="2" />
+						</svg>
+						<span class="tab-label">Sound</span>
+					</button>
+					<button class="section-tab" id="showPracticeButton" type="button" role="tab"
+						aria-selected="false" aria-controls="practice-body" title="Practice tools" disabled>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+							stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="13" r="8" />
+							<path d="M12 13V9" />
+							<path d="M9 2h6" />
+						</svg>
+						<span class="tab-label">Practice</span>
+					</button>
+					<button class="section-tab" id="showMetronomeButton" type="button" role="tab"
+						aria-selected="false" aria-controls="metro-body" title="Metronome" disabled>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+							stroke-linecap="round" stroke-linejoin="round">
+							<path d="M6 21h12L15 4H9L6 21z" />
+							<path d="M5 16h14" />
+							<path d="M12 14l5-7" />
+						</svg>
+						<span class="tab-label">Metronome</span>
+					</button>
+					<button class="section-tab" id="showDroneButton" type="button" role="tab"
+						aria-selected="false" aria-controls="drone-body" title="Sustained reference pitches" disabled>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+							stroke-linecap="round" stroke-linejoin="round">
+							<path d="M3 12c2 0 2-6 4-6s2 12 4 12 2-12 4-12 2 6 4 6" />
+						</svg>
+						<span class="tab-label">Drone</span>
+					</button>
+					<button class="section-tab" id="showPianoButton" type="button" role="tab"
+						aria-selected="false" aria-controls="piano-body" title="Reference piano" disabled>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+							stroke-linejoin="round">
+							<rect x="3" y="5" width="18" height="14" rx="2" />
+							<path d="M8 5v9M12 5v9M16 5v9" />
+							<rect x="6.6" y="5" width="2.2" height="6" rx="0.5" fill="currentColor" />
+							<rect x="10.9" y="5" width="2.2" height="6" rx="0.5" fill="currentColor" />
+							<rect x="15.2" y="5" width="2.2" height="6" rx="0.5" fill="currentColor" />
+						</svg>
+						<span class="tab-label">Piano</span>
+					</button>
+					<button class="section-tab section-tab--soon" id="showFretboardButton" type="button" role="tab"
+						aria-selected="false" aria-controls="fretboard-body" title="Fretboard (coming soon)" disabled>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+							stroke-linecap="round" stroke-linejoin="round">
+							<rect x="3" y="4" width="18" height="16" rx="2" />
+							<path d="M3 9h18M3 14h18" />
+							<path d="M8 4v16M13 4v16M18 4v16" />
+						</svg>
+						<span class="tab-label">Fretboard</span>
+						<span class="tab-badge">Soon</span>
+					</button>
+				</div>
 			</div>
 		</div>
 
@@ -527,73 +560,99 @@
 				<p>Track reps and time, fade the track to play from memory, hold a drone, or export the loop.</p>
 			</div>
 			<div class="practice-grid">
-				<div class="practice-block">
+				<div class="practice-block pb-wide">
 					<div class="practice-block-title">Session</div>
+					<div class="timer-row">
+						<div class="session-timer" id="ps-session">0:00</div>
+						<div class="timer-controls">
+							<button class="toggle-pill" id="session-toggle" aria-pressed="false">Start</button>
+							<button class="ghost-btn small" id="session-new">New</button>
+						</div>
+					</div>
+					<textarea class="session-note" id="session-note" rows="1"
+						placeholder="What are you working on? (saved to the journal)"></textarea>
 					<div class="practice-stats">
-						<span class="pstat"><span class="pstat-num" id="ps-session">0:00</span><span
-								class="pstat-lbl">session</span></span>
-						<span class="pstat"><span class="pstat-num" id="ps-song">0:00</span><span class="pstat-lbl">this
-								song</span></span>
+						<span class="pstat"><span class="pstat-num" id="ps-song">0:00</span><span
+								class="pstat-lbl">song</span></span>
 						<span class="pstat"><span class="pstat-num" id="ps-today">0:00</span><span
 								class="pstat-lbl">today</span></span>
 						<span class="pstat"><span class="pstat-num" id="ps-today-reps">0</span><span
-								class="pstat-lbl">reps today</span></span>
+								class="pstat-lbl">reps</span></span>
+						<button class="ghost-btn small journal-btn" id="journal-toggle">Journal</button>
 					</div>
-					<button class="ghost-btn small" id="journal-toggle">Show journal</button>
 					<div class="journal" id="journal" style="display:none"></div>
 				</div>
 
 				<div class="practice-block">
-					<div class="practice-block-title">Loop reps</div>
-					<div class="rep-counter" id="rep-count">0</div>
-					<button class="ghost-btn small" id="rep-reset">Reset</button>
-				</div>
-
-				<div class="practice-block">
-					<div class="practice-block-title">Memorize mode</div>
-					<p class="practice-hint">Fades the track a little each loop until silent, then back to full.</p>
-					<div class="practice-row">
-						<button class="toggle-pill" id="memorize-toggle" aria-pressed="false">Off</button>
-						<span class="stepper-value" id="memorize-level">off</span>
+					<div class="practice-block-title">Daily goal</div>
+					<div class="goal-bar"><span class="goal-fill" id="goal-fill"></span></div>
+					<div class="practice-row goal-row">
+						<button class="stepper-btn" id="goal-down" aria-label="Lower goal">-</button>
+						<span class="stepper-value"><span id="goal-min">30</span> min</span>
+						<button class="stepper-btn" id="goal-up" aria-label="Raise goal">+</button>
+						<span class="pstat-lbl goal-pct-lbl"><span id="goal-pct">0%</span> of goal</span>
 					</div>
 				</div>
 
-				<div class="practice-block">
-					<div class="practice-block-title">Drone</div>
-					<div class="practice-row">
-						<button class="toggle-pill" id="drone-toggle" aria-pressed="false">Off</button>
-						<select class="metro-select" id="drone-note">
-							<option>C</option>
-							<option>C#</option>
-							<option>D</option>
-							<option>D#</option>
-							<option>E</option>
-							<option>F</option>
-							<option>F#</option>
-							<option>G</option>
-							<option>G#</option>
-							<option selected>A</option>
-							<option>A#</option>
-							<option>B</option>
-						</select>
-						<select class="metro-select" id="drone-octave">
-							<option>2</option>
-							<option selected>3</option>
-							<option>4</option>
-						</select>
-						<label class="check"><input type="checkbox" id="drone-octave-down" checked /> +oct below</label>
+				<div class="practice-block streak-block">
+					<div class="practice-block-title">Streak</div>
+					<div class="streak-head">
+						<span class="streak-flame" id="streak-flame" aria-hidden="true">
+							<svg class="streak-flame-ic" viewBox="0 0 24 24" fill="currentColor">
+								<path
+									d="M13 2c.4 3-2.2 4.3-2.2 7.2 0 1.2.9 2.1 2 2.1s1.9-.9 1.9-2c0-.7.3-1.4.7-1.9 1.6 1.7 3.1 3.8 3.1 6.4a6.5 6.5 0 1 1-13 0c0-3.4 2.1-5.7 4.2-7.8C11.4 5.2 12.8 3.8 13 2z" />
+							</svg>
+						</span>
+						<span class="streak-num" id="streak-num">0</span>
+						<div class="streak-meta">
+							<span class="pstat-lbl">day streak</span>
+							<span class="streak-sub">
+								<span class="streak-best" id="streak-best">Best 0</span>
+								<span class="streak-freezes" id="streak-freezes" style="display:none"></span>
+							</span>
+						</div>
 					</div>
-					<div class="practice-row">
-						<span class="label">Vol</span>
-						<input class="zoom-range" id="drone-vol" type="range" min="0" max="100" value="40" />
-					</div>
+					<div class="streak-week" id="streak-week"></div>
 				</div>
 
 				<div class="practice-block">
-					<div class="practice-block-title">Export loop</div>
-					<p class="practice-hint">Save the looped region as a WAV file.</p>
-					<button class="ghost-btn" id="export-loop">Export loop (WAV)</button>
+					<div class="practice-block-title">Pomodoro</div>
+					<div class="timer-row">
+						<div class="pomo-countdown" id="pomo-countdown">25:00</div>
+						<div class="timer-controls">
+							<button class="toggle-pill" id="pomo-toggle" aria-pressed="false">Start</button>
+							<span class="pstat-lbl" id="pomo-status">focus &middot; #0</span>
+						</div>
+					</div>
+					<div class="practice-row">
+						<span class="label">Focus</span>
+						<button class="stepper-btn" id="pomo-focus-down" aria-label="Shorter focus">-</button>
+						<span class="stepper-value"><span id="pomo-focus">25</span> min</span>
+						<button class="stepper-btn" id="pomo-focus-up" aria-label="Longer focus">+</button>
+						<span class="label label-sep">Break</span>
+						<button class="stepper-btn" id="pomo-break-down" aria-label="Shorter break">-</button>
+						<span class="stepper-value"><span id="pomo-break">5</span> min</span>
+						<button class="stepper-btn" id="pomo-break-up" aria-label="Longer break">+</button>
+					</div>
 				</div>
+
+				<div class="practice-block pb-pair">
+					<div class="pb-pair-half">
+						<div class="practice-block-title">Loop reps</div>
+						<div class="rep-line">
+							<div class="rep-counter" id="rep-count">0</div>
+							<button class="ghost-btn small" id="rep-reset">Reset</button>
+						</div>
+					</div>
+					<div class="pb-pair-half">
+						<div class="practice-block-title">Memorize</div>
+						<div class="practice-row">
+							<button class="toggle-pill" id="memorize-toggle" aria-pressed="false">Off</button>
+							<span class="stepper-value" id="memorize-level">off</span>
+						</div>
+					</div>
+				</div>
+
 			</div>
 		</div>
 
@@ -606,11 +665,11 @@
 			</div>
 			<div class="practice-grid">
 				<div class="practice-block">
-					<div class="practice-block-title">Equalizer</div>
-					<p class="practice-hint">Shape the tone to bring a part forward - boost mids for a vocal, lows
-						for a bassline.</p>
+					<div class="practice-block-title">Tone &amp; dynamics</div>
+					<p class="practice-hint">EQ presets shape the tone to bring a part forward; the compressor evens
+						out loud and quiet so slowed-down passages stay audible.</p>
 					<div class="practice-row">
-						<span class="label">Preset</span>
+						<span class="label">EQ</span>
 						<select class="metro-select" id="eq-preset" aria-label="EQ preset">
 							<option value="off" selected>Off (flat)</option>
 							<option value="vocals">Vocals</option>
@@ -619,14 +678,23 @@
 							<option value="drums">Drums</option>
 						</select>
 					</div>
+					<div class="practice-row">
+						<span class="label">Compressor</span>
+						<button class="toggle-pill" id="punch-toggle" aria-pressed="false">Off</button>
+					</div>
 				</div>
 
-				<div class="practice-block">
+				<div class="practice-block spotlight-block">
 					<div class="practice-block-title">Spotlight (band-pass)</div>
 					<p class="practice-hint">Solo a frequency band - drag low to follow the bass, high for cymbals.</p>
+					<div class="spotlight-viz" id="spotlight-viz">
+						<canvas id="spotlight-canvas"></canvas>
+						<span class="spotlight-viz-tag" id="spotlight-freq-label">630 Hz</span>
+					</div>
 					<div class="practice-row">
 						<button class="toggle-pill" id="spotlight-toggle" aria-pressed="false">Off</button>
-						<span class="stepper-value" id="spotlight-freq-label">630 Hz</span>
+						<span class="practice-hint spotlight-state-hint" id="spotlight-state-hint">Preview only - turn
+							on to hear it</span>
 					</div>
 					<div class="practice-row">
 						<span class="label">Freq</span>
@@ -637,15 +705,6 @@
 						<span class="label">Width</span>
 						<input class="zoom-range" id="spotlight-q" type="range" min="0" max="100" value="50"
 							aria-label="Spotlight bandwidth" />
-					</div>
-				</div>
-
-				<div class="practice-block">
-					<div class="practice-block-title">Punch (compressor)</div>
-					<p class="practice-hint">Evens out loud and quiet so slowed-down or quiet passages stay
-						audible.</p>
-					<div class="practice-row">
-						<button class="toggle-pill" id="punch-toggle" aria-pressed="false">Off</button>
 					</div>
 				</div>
 			</div>
@@ -700,40 +759,122 @@
 			</div>
 		</div>
 
+		<!-- Drone -->
+		<div class="metro-card" id="drone-body">
+			<div class="metro-head">
+				<h3>Drone</h3>
+				<p>Up to three sustained reference pitches (e.g. a chord). Toggle each voice on. Holds steady through
+					transpose and Memorize fades.</p>
+			</div>
+			<div class="drone-voices">
+				<div class="practice-row drone-voice">
+					<button class="toggle-pill" id="drone-toggle-1" aria-pressed="false">Off</button>
+					<select class="metro-select" id="drone-note-1">
+						<option>C</option>
+						<option>C#</option>
+						<option>D</option>
+						<option>D#</option>
+						<option>E</option>
+						<option>F</option>
+						<option>F#</option>
+						<option>G</option>
+						<option>G#</option>
+						<option selected>A</option>
+						<option>A#</option>
+						<option>B</option>
+					</select>
+					<select class="metro-select" id="drone-octave-1">
+						<option>2</option>
+						<option selected>3</option>
+						<option>4</option>
+					</select>
+				</div>
+				<div class="practice-row drone-voice">
+					<button class="toggle-pill" id="drone-toggle-2" aria-pressed="false">Off</button>
+					<select class="metro-select" id="drone-note-2">
+						<option>C</option>
+						<option selected>C#</option>
+						<option>D</option>
+						<option>D#</option>
+						<option>E</option>
+						<option>F</option>
+						<option>F#</option>
+						<option>G</option>
+						<option>G#</option>
+						<option>A</option>
+						<option>A#</option>
+						<option>B</option>
+					</select>
+					<select class="metro-select" id="drone-octave-2">
+						<option>2</option>
+						<option selected>3</option>
+						<option>4</option>
+					</select>
+				</div>
+				<div class="practice-row drone-voice">
+					<button class="toggle-pill" id="drone-toggle-3" aria-pressed="false">Off</button>
+					<select class="metro-select" id="drone-note-3">
+						<option>C</option>
+						<option>C#</option>
+						<option>D</option>
+						<option>D#</option>
+						<option selected>E</option>
+						<option>F</option>
+						<option>F#</option>
+						<option>G</option>
+						<option>G#</option>
+						<option>A</option>
+						<option>A#</option>
+						<option>B</option>
+					</select>
+					<select class="metro-select" id="drone-octave-3">
+						<option>2</option>
+						<option selected>3</option>
+						<option>4</option>
+					</select>
+				</div>
+			</div>
+			<div class="practice-row drone-foot">
+				<label class="check"><input type="checkbox" id="drone-octave-down" checked /> +oct below</label>
+				<span class="label">Vol</span>
+				<input class="zoom-range drone-vol-range" id="drone-vol" type="range" min="0" max="100" value="40" />
+			</div>
+		</div>
+
 		<!-- Piano -->
 		<div class="piano-card" id="piano-body">
 			<div class="piano-head">
 				<h3>Reference piano</h3>
-				<p>Click keys or press z x c v b n m for naturals · s d g h j for sharps</p>
+				<p>Click keys or press Z X C V B N M for naturals · S D G H J for sharps</p>
 			</div>
 			<div class="piano-keys">
 				<div class="keys-inner">
 					<div data-note="C" class="key white">
-						<span class="note-label">C</span><span class="kbd-label">z</span>
+						<span class="note-label">C</span><span class="kbd-label">Z</span>
 					</div>
 					<div data-note="D" class="key white">
-						<span class="note-label">D</span><span class="kbd-label">x</span>
+						<span class="note-label">D</span><span class="kbd-label">X</span>
 					</div>
 					<div data-note="E" class="key white">
-						<span class="note-label">E</span><span class="kbd-label">c</span>
+						<span class="note-label">E</span><span class="kbd-label">C</span>
 					</div>
 					<div data-note="F" class="key white">
-						<span class="note-label">F</span><span class="kbd-label">v</span>
+						<span class="note-label">F</span><span class="kbd-label">V</span>
 					</div>
 					<div data-note="G" class="key white">
-						<span class="note-label">G</span><span class="kbd-label">b</span>
+						<span class="note-label">G</span><span class="kbd-label">B</span>
 					</div>
 					<div data-note="A" class="key white">
-						<span class="note-label">A</span><span class="kbd-label">n</span>
+						<span class="note-label">A</span><span class="kbd-label">N</span>
 					</div>
 					<div data-note="B" class="key white">
-						<span class="note-label">B</span><span class="kbd-label">m</span>
+						<span class="note-label">B</span><span class="kbd-label">M</span>
 					</div>
-					<div data-note="Db" class="key black" style="left:49px"><span class="kbd-label">s</span></div>
-					<div data-note="Eb" class="key black" style="left:117px"><span class="kbd-label">d</span></div>
-					<div data-note="Gb" class="key black" style="left:253px"><span class="kbd-label">g</span></div>
-					<div data-note="Ab" class="key black" style="left:321px"><span class="kbd-label">h</span></div>
-					<div data-note="Bb" class="key black" style="left:389px"><span class="kbd-label">j</span></div>
+					<div data-note="Db" class="key black" style="left:49px"><span class="kbd-label">S</span></div>
+					<div data-note="Eb" class="key black" style="left:117px"><span class="kbd-label">D</span></div>
+					<div data-note="Gb" class="key black" style="left:253px"><span class="kbd-label">G</span></div>
+					<div data-note="Ab" class="key black" style="left:321px"><span class="kbd-label">H</span></div>
+					<div data-note="Bb" class="key black" style="left:389px"><span class="kbd-label">J</span></div>
 				</div>
 			</div>
 
@@ -751,13 +892,49 @@
 			<audio id="B" src="{{ url_for('static', filename='piano/B.mp3') }}"></audio>
 		</div>
 
+		<!-- Fretboard (placeholder for future development) -->
+		<div class="metro-card fretboard-card" id="fretboard-body">
+			<div class="metro-head">
+				<h3>Fretboard</h3>
+				<p>An interactive guitar &amp; bass fretboard - see the detected key, scales and chord shapes
+					mapped to your instrument. Coming in a future update.</p>
+			</div>
+			<div class="fretboard-stage" aria-hidden="true">
+				<div class="fretboard-neck">
+					<span class="fb-string"></span>
+					<span class="fb-string"></span>
+					<span class="fb-string"></span>
+					<span class="fb-string"></span>
+					<span class="fb-string"></span>
+					<span class="fb-string"></span>
+					<span class="fb-fret" style="left:16%"></span>
+					<span class="fb-fret" style="left:32%"></span>
+					<span class="fb-fret" style="left:48%"></span>
+					<span class="fb-fret" style="left:64%"></span>
+					<span class="fb-fret" style="left:80%"></span>
+					<span class="fb-dot" style="left:40%;top:50%"></span>
+					<span class="fb-dot" style="left:72%;top:33%"></span>
+					<span class="fb-dot" style="left:72%;top:67%"></span>
+				</div>
+				<div class="fretboard-badge">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+						stroke-linecap="round" stroke-linejoin="round">
+						<circle cx="12" cy="12" r="9" />
+						<path d="M12 7.5V12l3 2" />
+					</svg>
+					<span>In development</span>
+				</div>
+			</div>
+		</div>
+
 		<!-- Footer -->
 		<div class="footer">
 			<span>Loopretto &middot; v2</span>
 			<div class="right">
 				<a href="howto">How to use</a>
 				<a href="about">About</a>
-				<a class="kofi-btn" href="https://ko-fi.com/cristian_gabriel/?amount=5" target="_blank" rel="noopener">
+				<a href="https://cristiangabriel.dev" target="_blank" rel="noopener">Developer</a>
+				<a class="kofi-btn" href="https://ko-fi.com/s/1bd08ce885" target="_blank" rel="noopener">
 					<span class="heart">&hearts;</span> Support
 				</a>
 			</div>

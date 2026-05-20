@@ -18,8 +18,7 @@ const loopTagText = $("loop-tag-text");
 
 const zoomSlider = $("zoom-range");
 const zoomDisplay = $("zoom-display");
-const zoomTag = $("zoom-tag");
-const zoomToLoopBtn = $("zoom-to-loop");
+const zoomResetBtn = $("zoom-reset");
 const channelSeg = $("channel-seg");
 
 const speedDownButton = $("decrease-speed");
@@ -33,6 +32,12 @@ const showNotesButton = $("showNotesButton");
 const showMetronomeButton = $("showMetronomeButton");
 const showPracticeButton = $("showPracticeButton");
 const showFxButton = $("showFxButton");
+const showDroneButton = $("showDroneButton");
+const showFretboardButton = $("showFretboardButton");
+const sectionTabs = $("section-tabs");
+const tabsTrack = $("tabs-track");
+const tabIndicator = $("tab-indicator");
+const fretboardBody = $("fretboard-body");
 
 const repsTag = $("reps-tag");
 const repsTagNum = $("reps-tag-num");
@@ -111,14 +116,26 @@ let pendingRestore = null; // session state to apply after the next load complet
 let notesOn = false;
 let noteRafId = null;
 let currentSongId = null;
-let sessionMs = 0; // active-playback time this page session (all songs)
-let playStartTs = null; // performance.now() at the current play start, else null
+// Manual practice session: a wall-clock stopwatch the user starts/stops. It
+// runs whether the track is playing or paused, so hands-on-instrument time is
+// counted. Time is banked into PracticeStore in per-song segments.
+let sessionActive = false;
+let sessionStartTs = null; // performance.now() at session start (for the headline timer)
+let sessionMarkTs = null; // start of the current not-yet-banked per-song segment
+let sessionReps = 0; // loop reps logged during the current session (for the journal)
 let sessionTickId = null;
+// Pomodoro focus/break timer (independent of the session).
+let pomoActive = false;
+let pomoPhase = "focus"; // "focus" | "break"
+let pomoEndTs = 0; // performance.now() when the current phase ends
+let pomoTickId = null;
+let pomoCompleted = 0; // focus blocks finished
+let pomoFocusMin = 25;
+let pomoBreakMin = 5;
 let loopReps = 0; // reps for the current loop (resettable)
 let memorizeOn = false;
 let memorizeStep = 0;
 let droneOn = false;
-let droneNodes = null;
 
 // ----- Helpers -----
 function fmt(secs) {
@@ -154,9 +171,9 @@ function toast(message, kind = "info", ms = 3600) {
 
 function setControlsEnabled(enabled) {
   [
-    speedDownButton, speedUpButton, playPauseButton, loopButton, zoomSlider,
+    speedDownButton, speedUpButton, playPauseButton, loopButton, zoomSlider, zoomResetBtn,
     showPianoButton, showNotesButton, showMetronomeButton, showPracticeButton,
-    showFxButton, pitchDownButton, pitchUpButton,
+    showFxButton, showDroneButton, showFretboardButton, pitchDownButton, pitchUpButton,
   ].concat(channelSeg ? [...channelSeg.querySelectorAll(".seg-btn")] : [])
     .forEach((el) => {
       if (el) el.disabled = !enabled;
@@ -169,7 +186,7 @@ function setControlsEnabled(enabled) {
 let _hintWraps = null;
 function setHintTitles(disabled) {
   if (!_hintWraps) {
-    _hintWraps = [document.querySelector(".transport"), document.querySelector(".right-cluster")]
+    _hintWraps = [document.querySelector(".transport"), document.querySelector(".section-tabs")]
       .concat(Array.from(document.querySelectorAll(".controls-middle .control-group")))
       .filter(Boolean);
     _hintWraps.forEach((w) => { w.dataset.origTitle = w.getAttribute("title") || ""; });
@@ -183,7 +200,6 @@ function updateZoomSlider(value) {
   zoomSlider.value = value;
   zoomSlider.setAttribute("aria-valuetext", `${value}%`);
   zoomDisplay.textContent = `${value}%`;
-  zoomTag.textContent = `${value}% zoom`;
 }
 
 function updateSpeedDisplay() {
@@ -205,7 +221,6 @@ function setPlayingUI(playing) {
 
 function setLoopUI(active) {
   loopButton.setAttribute("aria-pressed", active ? "true" : "false");
-  if (zoomToLoopBtn) zoomToLoopBtn.disabled = !active; // only meaningful with a loop
   if (active) {
     loopButton.classList.add("active");
     loopLabel.textContent = "Looping";
@@ -250,8 +265,15 @@ function applyTheme(cls) {
   reapplyWaveColors();
 }
 
+// Accent picker; "default" maps to the theme's own accent (DEFAULT_ACCENT),
+// mirroring the "Theme default" swatch of the Background / Containers rows.
 function applyAccent(value) {
-  document.documentElement.style.setProperty("--accent-raw", value);
+  if (!value || value === "default") {
+    document.documentElement.style.setProperty("--accent-raw", DEFAULT_ACCENT);
+    value = "default";
+  } else {
+    document.documentElement.style.setProperty("--accent-raw", value);
+  }
   accentRow.querySelectorAll(".accent-dot").forEach((dot) => {
     dot.classList.toggle("active", dot.dataset.accent === value);
   });
@@ -316,18 +338,18 @@ surfaceRow.addEventListener("click", (e) => {
 });
 
 let savedTheme = DEFAULT_THEME;
-let savedAccent = DEFAULT_ACCENT;
+let savedAccent = "default";
 let savedBg = "default";
 let savedSurface = "default";
 try {
   savedTheme = localStorage.getItem("loopretto.theme") || DEFAULT_THEME;
-  savedAccent = localStorage.getItem("loopretto.accent") || DEFAULT_ACCENT;
+  savedAccent = localStorage.getItem("loopretto.accent") || "default";
   savedBg = localStorage.getItem("loopretto.bg") || "default";
   savedSurface = localStorage.getItem("loopretto.surface") || "default";
 } catch (e) {}
 // Drop a stale/old-palette accent so the current swatches always apply.
 const validAccents = [...accentRow.querySelectorAll(".accent-dot")].map((d) => d.dataset.accent);
-if (!validAccents.includes(savedAccent)) savedAccent = DEFAULT_ACCENT;
+if (!validAccents.includes(savedAccent)) savedAccent = "default";
 // Same guard for backgrounds, in case the swatch set changes.
 const validBgs = [...bgRow.querySelectorAll(".bg-dot")].map((d) => d.dataset.bg);
 if (!validBgs.includes(savedBg)) savedBg = "default";
@@ -390,8 +412,8 @@ const SHORTCUTS = [
   { keys: ["F"], desc: "Focus (fullscreen) mode" },
   { keys: ["?"], desc: "Show this shortcuts list" },
   { keys: ["Esc"], desc: "Close this list / exit fullscreen" },
-  { keys: ["z", "x", "c", "v", "b", "n", "m"], desc: "Piano: natural keys (C–B)" },
-  { keys: ["s", "d", "g", "h", "j"], desc: "Piano: sharp/flat keys" },
+  { keys: ["Z", "X", "C", "V", "B", "N", "M"], desc: "Piano: natural keys (C–B)" },
+  { keys: ["S", "D", "G", "H", "J"], desc: "Piano: sharp/flat keys" },
 ];
 const shortcutsOverlay = $("shortcuts-overlay");
 const shortcutsList = $("shortcuts-list");
@@ -428,6 +450,8 @@ function openShortcuts() {
 function closeShortcuts() { shortcutsOverlay.style.display = "none"; }
 function toggleShortcuts() { isShortcutsOpen() ? closeShortcuts() : openShortcuts(); }
 shortcutsClose.addEventListener("click", closeShortcuts);
+const shortcutsOpenBtn = $("shortcuts-open");
+if (shortcutsOpenBtn) shortcutsOpenBtn.addEventListener("click", openShortcuts);
 shortcutsOverlay.addEventListener("click", (e) => {
   if (e.target === shortcutsOverlay) closeShortcuts(); // click the scrim to dismiss
 });
@@ -472,6 +496,7 @@ let compressorNode = null, compMakeup = null; // "punch" compressor + makeup gai
 let eqPreset = "off";
 let spotlightOn = false;
 let punchOn = false;
+let spotlightReady = false; // gates drawSpotlight() until its DOM refs exist
 const metronome = new Metronome();
 
 function ensureAudioGraph() {
@@ -694,6 +719,7 @@ function reapplyWaveColors() {
   if (loopRegion) {
     try { loopRegion.setOptions({ color: getRegionColor() }); } catch (e) {}
   }
+  if (spotlightReady) drawSpotlight();
 }
 
 // Apply persisted appearance after wavesurfer exists so wave colors track it.
@@ -718,17 +744,16 @@ wavesurfer.on("interaction", (newTime) => {
   currentTimeEl.textContent = fmt(newTime);
 });
 
+// Play state no longer drives practice time; the manual session timer does
+// (so paused, working-it-out-on-the-instrument time counts too).
 wavesurfer.on("play", () => {
   setPlayingUI(true);
-  startPlayClock();
 });
 wavesurfer.on("pause", () => {
   setPlayingUI(false);
-  stopPlayClock();
 });
 wavesurfer.on("finish", () => {
   setPlayingUI(false);
-  stopPlayClock();
 });
 
 // Loop: when the playhead leaves the loop region, jump back to its start.
@@ -770,6 +795,7 @@ function revealPlayer(title, thumbnail) {
   thumbAndTitleZone.classList.remove("hidden");
   waveformCard.classList.remove("hidden");
   controlsRow.classList.remove("hidden");
+  sectionTabs.classList.remove("hidden");
   waveEmpty.classList.add("hidden");
   fileIsLoaded = true;
   setControlsEnabled(true);
@@ -926,12 +952,8 @@ urlForm.addEventListener("submit", (e) => {
 
 document.querySelectorAll(".chip[data-url]").forEach((chip) => {
   chip.addEventListener("click", () => {
-    // Don't clobber a URL the user is mid-way through typing/pasting; only fill
-    // an empty input.
-    if (urlInput.value.trim()) {
-      urlInput.focus();
-      return;
-    }
+    // Always drop the chip's URL into the address bar, replacing whatever is
+    // there - so clicking from one suggestion to the next just swaps it out.
     urlInput.value = chip.dataset.url;
     urlInput.focus();
   });
@@ -946,7 +968,7 @@ function teardownTrack() {
   wsRegions.clearRegions();
   setLoopUI(false);
   setPlayingUI(false);
-  stopPlayClock();
+  bankSessionSegment(); // credit the outgoing song; the session keeps running across track changes
   setNotesEnabled(false);
   stopMetronome();
   setMemorize(false);
@@ -962,10 +984,14 @@ function teardownTrack() {
   closePanel(metroBody, showMetronomeButton);
   closePanel(practiceBody, showPracticeButton);
   closePanel(fxBody, showFxButton);
+  closePanel(droneBody, showDroneButton);
+  closePanel(fretboardBody, showFretboardButton);
+  moveTabIndicator(); // nothing active now -> fade the pill out
   closeSetlistPopover();
   thumbAndTitleZone.classList.add("hidden");
   waveformCard.classList.add("hidden");
   controlsRow.classList.add("hidden");
+  sectionTabs.classList.add("hidden");
   loadingZone.classList.remove("hidden");
   waveEmpty.classList.remove("hidden");
   fileIsLoaded = false;
@@ -1345,25 +1371,13 @@ zoomSlider.addEventListener("input", (event) => {
   updateZoomSlider(currentZoom);
 });
 
-// Zoom so the looped region fills the waveform, then scroll it into view.
-function zoomToLoop() {
-  if (!loopRegion) { toast("Create a loop first, then zoom to it."); return; }
-  const dur = loopRegion.end - loopRegion.start;
-  if (dur <= 0) return;
-  const width = waveformEl.clientWidth || 600;
-  const pxPerSec = Math.max(1, (width / dur) * 0.9); // 10% breathing room
-  try {
-    wavesurfer.zoom(pxPerSec);
-    // Put the loop start near the left edge (small margin), defeating autoCenter.
-    // Defer a frame so the scroll container has resized to the new zoom first.
-    const target = Math.max(0, loopRegion.start * pxPerSec - width * 0.05);
-    requestAnimationFrame(() => { try { wavesurfer.setScroll(target); } catch (e) {} });
-  } catch (e) { console.error(e); }
-  // Reflect the new zoom on the slider (clamped to its 0–250 px/s range).
-  currentZoom = Math.max(0, Math.min(100, Math.round(pxPerSec / 2.5)));
+// Zoom all the way out so the whole track fits the waveform again.
+function resetZoom() {
+  currentZoom = 0;
+  try { wavesurfer.zoom(currentZoom * 2.5); } catch (e) {}
   updateZoomSlider(currentZoom);
 }
-zoomToLoopBtn.addEventListener("click", zoomToLoop);
+zoomResetBtn.addEventListener("click", resetZoom);
 
 // ----- Channel isolation / vocal removal (mid-side) -----
 function setChannelMode(mode) {
@@ -1393,11 +1407,121 @@ channelSeg.addEventListener("click", (e) => {
 // ----- Sound FX panel (EQ / spotlight / punch) -----
 const fxBody = $("fx-body");
 const eqPresetSel = $("eq-preset");
+const spotlightBlock = document.querySelector(".spotlight-block");
 const spotlightToggle = $("spotlight-toggle");
 const spotlightFreq = $("spotlight-freq");
 const spotlightQ = $("spotlight-q");
 const spotlightFreqLabel = $("spotlight-freq-label");
+const spotlightStateHint = $("spotlight-state-hint");
+const spotlightViz = $("spotlight-viz");
+const spotlightCanvas = $("spotlight-canvas");
+const spotlightCtx = spotlightCanvas ? spotlightCanvas.getContext("2d") : null;
 const punchToggle = $("punch-toggle");
+
+// Visualizer frequency axis (a touch wider than the slider's 50 Hz–8 kHz reach).
+const SPOT_VIZ_FMIN = 30, SPOT_VIZ_FMAX = 18000;
+const SPOT_VIZ_TICKS = [100, 1000, 10000];
+
+function cssVar(name) {
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+// Analytic band-pass magnitude (0–1, peak 1 at center) so the curve renders
+// even before the audio graph exists; matches the BiquadFilter "bandpass" shape.
+function bandpassMag(f, f0, q) {
+  const r = f / f0 - f0 / f;
+  return 1 / Math.sqrt(1 + q * q * r * r);
+}
+
+let spotlightRaf = 0;
+function requestSpotlightDraw() {
+  if (spotlightRaf) return;
+  spotlightRaf = requestAnimationFrame(() => { spotlightRaf = 0; drawSpotlight(); });
+}
+
+function drawSpotlight() {
+  if (!spotlightReady || !spotlightCtx) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = spotlightViz.getBoundingClientRect();
+  const w = Math.round(rect.width), h = Math.round(rect.height);
+  if (w < 2 || h < 2) return; // panel hidden; ResizeObserver redraws when shown
+  if (spotlightCanvas.width !== w * dpr || spotlightCanvas.height !== h * dpr) {
+    spotlightCanvas.width = w * dpr;
+    spotlightCanvas.height = h * dpr;
+  }
+  const ctx = spotlightCtx;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const logMin = Math.log10(SPOT_VIZ_FMIN), logMax = Math.log10(SPOT_VIZ_FMAX);
+  const span = logMax - logMin;
+  const xToFreq = (x) => Math.pow(10, logMin + (x / w) * span);
+  const freqToX = (f) => ((Math.log10(f) - logMin) / span) * w;
+
+  const f0 = spotlightFreqFromSlider();
+  const q = spotlightQFromSlider();
+  const on = spotlightOn;
+  const accent = cssVar("--accent");
+  const curveColor = on ? accent : cssVar("--text-dim");
+  const top = 6, base = h - 2;
+
+  // Frequency gridlines + labels.
+  ctx.lineWidth = 1;
+  ctx.font = "10px 'JetBrains Mono', monospace";
+  ctx.textBaseline = "bottom";
+  SPOT_VIZ_TICKS.forEach((f) => {
+    const x = Math.round(freqToX(f)) + 0.5;
+    ctx.globalAlpha = 0.45;
+    ctx.strokeStyle = cssVar("--border");
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = cssVar("--text-dim");
+    ctx.fillText(f >= 1000 ? f / 1000 + "k" : String(f), x + 4, h - 3);
+  });
+  ctx.globalAlpha = 1;
+
+  // Response curve.
+  const pts = [];
+  for (let x = 0; x <= w; x += 2) {
+    const mag = bandpassMag(xToFreq(x), f0, q);
+    pts.push([x, base - mag * (base - top)]);
+  }
+
+  // Soft fill under the curve.
+  ctx.beginPath();
+  ctx.moveTo(0, base + 2);
+  pts.forEach(([x, y]) => ctx.lineTo(x, y));
+  ctx.lineTo(w, base + 2);
+  ctx.closePath();
+  ctx.globalAlpha = on ? 0.22 : 0.1;
+  ctx.fillStyle = curveColor;
+  ctx.fill();
+
+  // Stroke, with a glow when active.
+  ctx.globalAlpha = 1;
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = curveColor;
+  ctx.shadowColor = on ? accent : "transparent";
+  ctx.shadowBlur = on ? 10 : 0;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Peak marker at the center frequency.
+  const peakX = freqToX(f0), peakY = top;
+  ctx.globalAlpha = on ? 0.35 : 0.18;
+  ctx.strokeStyle = curveColor;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.moveTo(peakX, peakY); ctx.lineTo(peakX, base); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.beginPath();
+  ctx.arc(peakX, peakY + 1, on ? 4 : 3, 0, Math.PI * 2);
+  ctx.fillStyle = curveColor;
+  ctx.fill();
+}
 
 function setEqPreset(preset) {
   eqPreset = preset;
@@ -1411,6 +1535,9 @@ function setSpotlight(on) {
   spotlightToggle.classList.toggle("active", on);
   spotlightToggle.setAttribute("aria-pressed", on ? "true" : "false");
   spotlightToggle.textContent = on ? "On" : "Off";
+  if (spotlightBlock) spotlightBlock.classList.toggle("spotlight-on", on);
+  if (spotlightStateHint) spotlightStateHint.textContent = on ? "Soloing this band" : "Preview only - turn on to hear it";
+  drawSpotlight();
   rebuildFxChain();
 }
 function setPunch(on) {
@@ -1432,10 +1559,13 @@ function resetFx() {
   spotlightToggle.classList.remove("active");
   spotlightToggle.setAttribute("aria-pressed", "false");
   spotlightToggle.textContent = "Off";
+  if (spotlightBlock) spotlightBlock.classList.remove("spotlight-on");
+  if (spotlightStateHint) spotlightStateHint.textContent = "Preview only - turn on to hear it";
   punchToggle.classList.remove("active");
   punchToggle.setAttribute("aria-pressed", "false");
   punchToggle.textContent = "Off";
   applyEqPreset("off");
+  drawSpotlight();
   rebuildFxChain();
 }
 
@@ -1444,26 +1574,77 @@ spotlightToggle.addEventListener("click", () => setSpotlight(!spotlightOn));
 punchToggle.addEventListener("click", () => setPunch(!punchOn));
 spotlightFreq.addEventListener("input", () => {
   updateSpotlightFreqLabel();
+  requestSpotlightDraw();
   if (bandpassNode && audioCtx) {
     bandpassNode.frequency.setTargetAtTime(spotlightFreqFromSlider(), audioCtx.currentTime, 0.02);
   }
 });
 spotlightQ.addEventListener("input", () => {
+  requestSpotlightDraw();
   if (bandpassNode && audioCtx) {
     bandpassNode.Q.setTargetAtTime(spotlightQFromSlider(), audioCtx.currentTime, 0.02);
   }
 });
 updateSpotlightFreqLabel();
-showFxButton.addEventListener("click", () => { togglePanel(fxBody, showFxButton); });
+
+// The FX panel starts hidden (0×0), so draw once it gains a size and on resize.
+spotlightReady = true;
+if (spotlightViz && "ResizeObserver" in window) {
+  new ResizeObserver(() => requestSpotlightDraw()).observe(spotlightViz);
+}
+drawSpotlight();
+
+showFxButton.addEventListener("click", () => {
+  selectSection(fxBody, showFxButton);
+  requestSpotlightDraw();
+});
 
 // ----- Panel toggles (Metronome / Piano) -----
 const pianoBody = $("piano-body");
-function openPanel(panel, btn) { panel.classList.add("show"); btn.classList.add("active"); btn.setAttribute("aria-pressed", "true"); }
-function closePanel(panel, btn) { panel.classList.remove("show"); btn.classList.remove("active"); btn.setAttribute("aria-pressed", "false"); }
-function togglePanel(panel, btn) {
-  if (panel.classList.contains("show")) closePanel(panel, btn);
-  else openPanel(panel, btn);
+function openPanel(panel, btn) { panel.classList.add("show"); btn.classList.add("active"); btn.setAttribute("aria-selected", "true"); }
+function closePanel(panel, btn) { panel.classList.remove("show"); btn.classList.remove("active"); btn.setAttribute("aria-selected", "false"); }
+
+// The section tabs behave like a tablist: picking one opens its panel and closes
+// the rest; clicking the active tab collapses it. The accent pill (.tab-indicator)
+// glides behind the active tab and fades out when nothing is selected. The panel
+// refs it closes over are defined further down, so this resolves them at call
+// time via getSectionPanels() rather than capturing them now.
+function getSectionPanels() {
+  return [
+    [fxBody, showFxButton],
+    [practiceBody, showPracticeButton],
+    [metroBody, showMetronomeButton],
+    [droneBody, showDroneButton],
+    [pianoBody, showPianoButton],
+    [fretboardBody, showFretboardButton],
+  ];
 }
+
+function moveTabIndicator() {
+  const active = tabsTrack.querySelector(".section-tab.active");
+  if (!active) {
+    tabIndicator.classList.remove("show");
+    return;
+  }
+  // offsetLeft/offsetWidth are relative to .tabs-track (the indicator's
+  // offsetParent), so they map straight onto the pill.
+  tabIndicator.style.width = `${active.offsetWidth}px`;
+  tabIndicator.style.transform = `translateX(${active.offsetLeft}px)`;
+  tabIndicator.classList.add("show");
+  active.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+function selectSection(panel, btn) {
+  const willOpen = !panel.classList.contains("show");
+  getSectionPanels().forEach(([p, b]) => closePanel(p, b));
+  if (willOpen) openPanel(panel, btn);
+  moveTabIndicator();
+}
+
+// Reposition the pill if the viewport reflows the tab widths.
+window.addEventListener("resize", () => {
+  if (sectionTabs && !sectionTabs.classList.contains("hidden")) moveTabIndicator();
+});
 
 // ----- Pitch shift (transpose, tempo unchanged) -----
 function updatePitchDisplay() {
@@ -1617,30 +1798,57 @@ metroBeats.addEventListener("change", () => {
   metronome.setBeatsPerBar(parseInt(metroBeats.value, 10));
   renderBeatDots();
 });
-showMetronomeButton.addEventListener("click", () => { togglePanel(metroBody, showMetronomeButton); });
+showMetronomeButton.addEventListener("click", () => { selectSection(metroBody, showMetronomeButton); });
 
 renderBeatDots();
 updateBpmDisplay();
 updatePitchDisplay();
 
-// ----- Practice tools (session/journal, reps, memorize, drone, export) -----
+// ----- Practice tools (session/journal, reps, memorize) -----
 const practiceBody = $("practice-body");
+const droneBody = $("drone-body");
 const psSession = $("ps-session");
 const psSong = $("ps-song");
 const psToday = $("ps-today");
 const psTodayReps = $("ps-today-reps");
+const sessionToggle = $("session-toggle");
+const sessionNew = $("session-new");
+const sessionNote = $("session-note");
+const goalFill = $("goal-fill");
+const goalMinEl = $("goal-min");
+const goalPct = $("goal-pct");
+const goalDown = $("goal-down");
+const goalUp = $("goal-up");
+const streakFlame = $("streak-flame");
+const streakNum = $("streak-num");
+const streakBest = $("streak-best");
+const streakFreezes = $("streak-freezes");
+const streakWeek = $("streak-week");
+let prevStreak = null;
+const pomoCountdown = $("pomo-countdown");
+const pomoToggle = $("pomo-toggle");
+const pomoStatus = $("pomo-status");
+const pomoFocusEl = $("pomo-focus");
+const pomoBreakEl = $("pomo-break");
+const pomoFocusDown = $("pomo-focus-down");
+const pomoFocusUp = $("pomo-focus-up");
+const pomoBreakDown = $("pomo-break-down");
+const pomoBreakUp = $("pomo-break-up");
 const journalToggle = $("journal-toggle");
 const journalEl = $("journal");
 const repCount = $("rep-count");
 const repReset = $("rep-reset");
 const memorizeToggle = $("memorize-toggle");
 const memorizeLevel = $("memorize-level");
-const droneToggle = $("drone-toggle");
-const droneNote = $("drone-note");
-const droneOctave = $("drone-octave");
+const droneVoices = [1, 2, 3].map((i) => ({
+  toggle: $("drone-toggle-" + i),
+  note: $("drone-note-" + i),
+  octave: $("drone-octave-" + i),
+  on: false,
+  nodes: null,
+}));
 const droneOctaveDown = $("drone-octave-down");
 const droneVol = $("drone-vol");
-const exportBtn = $("export-loop");
 
 function fmtClock(ms) {
   let s = Math.floor(ms / 1000);
@@ -1657,7 +1865,9 @@ function computeSongId(idPart, type) {
 }
 
 function beginSong(songId, title) {
-  flushPlayTime(); // bank time from any previous song first
+  // If a session is running, bank the previous song's segment before switching
+  // so each song's "this song" total stays accurate across track changes.
+  bankSessionSegment();
   currentSongId = songId;
   window.currentAudioTitle = title || window.currentAudioTitle;
   loopReps = 0;
@@ -1666,35 +1876,225 @@ function beginSong(songId, title) {
   updatePracticeDisplay();
 }
 
-// --- Session timer ---
-function startPlayClock() {
-  playStartTs = performance.now();
+// --- Practice session timer (manual, wall-clock) ---
+// Bank the elapsed-since-the-last-mark to the current song. addTime() also
+// increments today's total, so the daily total is the sum of segments (no
+// double counting). Resets the mark so the next call banks only new time.
+function bankSessionSegment() {
+  if (!sessionActive || sessionMarkTs == null) return;
+  const ms = performance.now() - sessionMarkTs;
+  sessionMarkTs = performance.now();
+  if (ms > 0 && currentSongId) PracticeStore.addTime(currentSongId, window.currentAudioTitle, ms);
+}
+function startSession() {
+  sessionActive = true;
+  sessionStartTs = sessionMarkTs = performance.now();
+  sessionReps = 0;
   if (!sessionTickId) sessionTickId = setInterval(updatePracticeDisplay, 1000);
+  updateSessionUI();
   updatePracticeDisplay();
 }
-function stopPlayClock() {
-  flushPlayTime();
+function stopSession() {
+  if (!sessionActive) return;
+  const total = performance.now() - sessionStartTs;
+  bankSessionSegment();
+  PracticeStore.addSession({
+    start: Date.now() - total,
+    ms: total,
+    songId: currentSongId,
+    title: window.currentAudioTitle,
+    note: sessionNote ? sessionNote.value.trim() : "",
+    reps: sessionReps,
+    pomos: pomoCompleted,
+  });
+  sessionActive = false;
+  sessionMarkTs = null;
   if (sessionTickId) { clearInterval(sessionTickId); sessionTickId = null; }
+  updateSessionUI();
   updatePracticeDisplay();
 }
-function flushPlayTime() {
-  if (playStartTs == null) return;
-  const ms = performance.now() - playStartTs;
-  playStartTs = null;
-  sessionMs += ms;
-  if (currentSongId) PracticeStore.addTime(currentSongId, window.currentAudioTitle, ms);
+function newSession() {
+  if (sessionActive) stopSession();
+  if (sessionNote) sessionNote.value = "";
+  startSession();
+}
+function updateSessionUI() {
+  sessionToggle.classList.toggle("active", sessionActive);
+  sessionToggle.setAttribute("aria-pressed", sessionActive ? "true" : "false");
+  sessionToggle.textContent = sessionActive ? "Stop" : "Start";
 }
 function updatePracticeDisplay() {
-  const live = playStartTs != null ? performance.now() - playStartTs : 0;
+  // live = the current per-song segment that hasn't been banked yet.
+  const live = sessionActive && sessionMarkTs != null ? performance.now() - sessionMarkTs : 0;
   const songTotal = (currentSongId ? PracticeStore.song(currentSongId).totalMs : 0) + live;
-  psSession.textContent = fmtClock(sessionMs + live);
+  const sessionElapsed = sessionActive ? performance.now() - sessionStartTs : 0;
+  psSession.textContent = fmtClock(sessionElapsed);
   psSong.textContent = fmtClock(songTotal);
   const t = PracticeStore.today();
   psToday.textContent = fmtClock(t.ms + live);
   psTodayReps.textContent = String(t.reps);
   if (practiceTime) practiceTime.textContent = fmtClock(songTotal);
+  updateGoalDisplay(t.ms + live);
+  updateStreakDisplay();
 }
-window.addEventListener("beforeunload", flushPlayTime);
+// On a hard close, bank the open segment so the time isn't lost. A full session
+// entry is only recorded on an explicit Stop.
+window.addEventListener("beforeunload", bankSessionSegment);
+sessionToggle.addEventListener("click", () => { if (sessionActive) stopSession(); else startSession(); });
+sessionNew.addEventListener("click", () => { newSession(); });
+
+// --- Daily goal + streak ---
+function updateGoalDisplay(todayMs) {
+  if (typeof todayMs !== "number") {
+    const live = sessionActive && sessionMarkTs != null ? performance.now() - sessionMarkTs : 0;
+    todayMs = PracticeStore.today().ms + live;
+  }
+  const goalMs = PracticeStore.getGoal() * 60000;
+  const pct = goalMs > 0 ? Math.min(100, (todayMs / goalMs) * 100) : 0;
+  goalFill.style.width = pct + "%";
+  goalFill.classList.toggle("met", pct >= 100);
+  goalPct.textContent = Math.round(pct) + "%";
+  goalMinEl.textContent = String(PracticeStore.getGoal());
+}
+goalDown.addEventListener("click", () => { PracticeStore.setGoal(PracticeStore.getGoal() - 5); updateGoalDisplay(); });
+goalUp.addEventListener("click", () => { PracticeStore.setGoal(PracticeStore.getGoal() + 5); updateGoalDisplay(); });
+
+// --- Streak (flame + best + freezes + week dots, with milestone celebration) ---
+const DAY_MS = 86400000;
+const STREAK_MILESTONES = [7, 30, 100, 365];
+const WEEKDAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
+
+function dayKeyUTC(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function renderStreakWeek() {
+  if (!streakWeek) return;
+  // Current week, Sunday -> Saturday, in UTC to match PracticeStore day keys.
+  const now = new Date();
+  const sunday = new Date(now);
+  sunday.setUTCDate(now.getUTCDate() - now.getUTCDay());
+  const todayKey = dayKeyUTC(now);
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(sunday.getTime() + i * DAY_MS);
+    const key = dayKeyUTC(day);
+    const info = PracticeStore.dayInfo(key);
+    const cls = ["streak-day"];
+    if (info.frozen) cls.push("frozen");
+    else if (info.ms > 0) cls.push("practiced");
+    if (key === todayKey) cls.push("today");
+    if (key > todayKey) cls.push("future");
+    html += `<span class="${cls.join(" ")}"><span class="streak-dot"></span><span class="streak-dow">${WEEKDAY_INITIALS[i]}</span></span>`;
+  }
+  streakWeek.innerHTML = html;
+}
+
+function updateStreakDisplay() {
+  const info = PracticeStore.refreshStreak();
+  const cur = info.current;
+  const live = sessionActive && sessionMarkTs != null ? performance.now() - sessionMarkTs : 0;
+  const doneToday = PracticeStore.today().ms + live > 0;
+
+  if (streakNum) streakNum.textContent = String(cur);
+  if (streakFlame) streakFlame.classList.toggle("lit", doneToday && cur > 0);
+  if (streakBest) streakBest.textContent = "Best " + info.best;
+  if (streakFreezes) {
+    streakFreezes.textContent = info.freezes > 0 ? "❄ × " + info.freezes : "";
+    streakFreezes.style.display = info.freezes > 0 ? "" : "none";
+  }
+  renderStreakWeek();
+
+  // Celebrate only when the streak actually grows (first practice of a new day),
+  // never on the initial page-load read.
+  if (prevStreak != null && cur > prevStreak) {
+    if (streakFlame) {
+      streakFlame.classList.remove("pulse");
+      void streakFlame.offsetWidth; // restart the animation
+      streakFlame.classList.add("pulse");
+    }
+    if (STREAK_MILESTONES.indexOf(cur) !== -1) {
+      toast(`🔥 ${cur} day streak!`, "success");
+    } else {
+      toast(`Streak extended · ${cur} day${cur === 1 ? "" : "s"}`, "info");
+    }
+    if (typeof playChime === "function") playChime();
+  }
+  prevStreak = cur;
+}
+
+// --- Pomodoro ---
+function fmtCountdown(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+function updatePomoUI() {
+  pomoToggle.classList.toggle("active", pomoActive);
+  pomoToggle.setAttribute("aria-pressed", pomoActive ? "true" : "false");
+  pomoToggle.textContent = pomoActive ? "Stop" : "Start";
+  pomoStatus.innerHTML = `${pomoPhase} &middot; #${pomoCompleted}`;
+  pomoFocusEl.textContent = String(pomoFocusMin);
+  pomoBreakEl.textContent = String(pomoBreakMin);
+  const remaining = pomoActive ? pomoEndTs - performance.now() : (pomoPhase === "break" ? pomoBreakMin : pomoFocusMin) * 60000;
+  pomoCountdown.textContent = fmtCountdown(remaining);
+}
+function startPomodoro() {
+  pomoActive = true;
+  pomoPhase = "focus";
+  pomoEndTs = performance.now() + pomoFocusMin * 60000;
+  if (!pomoTickId) pomoTickId = setInterval(pomoTick, 250);
+  updatePomoUI();
+}
+function stopPomodoro() {
+  pomoActive = false;
+  if (pomoTickId) { clearInterval(pomoTickId); pomoTickId = null; }
+  updatePomoUI();
+}
+function pomoTick() {
+  if (!pomoActive) return;
+  if (performance.now() >= pomoEndTs) pomoTransition();
+  else updatePomoUI();
+}
+function pomoTransition() {
+  if (pomoPhase === "focus") {
+    pomoCompleted++;
+    pomoPhase = "break";
+    pomoEndTs = performance.now() + pomoBreakMin * 60000;
+    playChime();
+    toast(`Focus block #${pomoCompleted} done. Take a ${pomoBreakMin} min break.`, "info");
+  } else {
+    pomoPhase = "focus";
+    pomoEndTs = performance.now() + pomoFocusMin * 60000;
+    playChime();
+    toast("Break's over. Back to it.", "info");
+  }
+  updatePomoUI();
+}
+// Short two-note sine ping straight to destination (bypasses masterGain, same
+// pattern as the metronome/drone). No asset, no notification permission.
+function playChime() {
+  ensureAudioGraph();
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  [880, 1318.5].forEach((freq, i) => {
+    const t = now + i * 0.16;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    osc.connect(g).connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  });
+}
+pomoToggle.addEventListener("click", () => { if (pomoActive) stopPomodoro(); else startPomodoro(); });
+pomoFocusDown.addEventListener("click", () => { pomoFocusMin = Math.max(1, pomoFocusMin - 5); updatePomoUI(); });
+pomoFocusUp.addEventListener("click", () => { pomoFocusMin = Math.min(120, pomoFocusMin + 5); updatePomoUI(); });
+pomoBreakDown.addEventListener("click", () => { pomoBreakMin = Math.max(1, pomoBreakMin - 1); updatePomoUI(); });
+pomoBreakUp.addEventListener("click", () => { pomoBreakMin = Math.min(60, pomoBreakMin + 1); updatePomoUI(); });
 
 // --- Loop rep counter ---
 function resetLoopReps() {
@@ -1707,6 +2107,7 @@ function updateRepDisplay() {
 }
 function onLoopRestart() {
   loopReps++;
+  if (sessionActive) sessionReps++;
   if (currentSongId) PracticeStore.addRep(currentSongId, window.currentAudioTitle);
   updateRepDisplay();
   updatePracticeDisplay();
@@ -1755,29 +2156,43 @@ function updateMemorizeDisplay() {
 }
 memorizeToggle.addEventListener("click", () => { setMemorize(!memorizeOn); });
 
-// --- Drone: sustained reference pitch, bypasses masterGain ---
+// --- Drone: up to three sustained reference pitches (a chord), bypass masterGain ---
 const NOTE_INDEX = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
-function droneFreq() {
-  const octave = parseInt(droneOctave.value, 10);
-  const midi = (octave + 1) * 12 + (NOTE_INDEX[droneNote.value] || 0);
+// Shared output: every voice feeds one lowpass -> Vol gain -> destination, bypassing
+// masterGain so memorize fade / transpose never touch the reference pitches.
+let droneBus = null;
+
+function ensureDroneBus() {
+  ensureAudioGraph();
+  if (!audioCtx) return false;
+  if (!droneBus) {
+    const out = audioCtx.createGain();
+    out.gain.value = Number(droneVol.value) / 100;
+    out.connect(audioCtx.destination);
+    const lp = audioCtx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 2200;
+    lp.connect(out);
+    droneBus = { lp, out };
+  }
+  return true;
+}
+function voiceFreq(v) {
+  const octave = parseInt(v.octave.value, 10);
+  const midi = (octave + 1) * 12 + (NOTE_INDEX[v.note.value] || 0);
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
-function startDroneNodes() {
-  ensureAudioGraph();
-  if (!audioCtx) return;
-  stopDroneNodes(true);
-  const out = audioCtx.createGain();
-  out.gain.value = 0;
-  out.connect(audioCtx.destination); // bypass masterGain (memorize fade must not touch the reference)
-  const lp = audioCtx.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 2200;
-  lp.connect(out);
-  const f = droneFreq();
+function startVoiceNodes(v) {
+  if (!ensureDroneBus()) return;
+  stopVoiceNodes(v, true);
+  const vg = audioCtx.createGain(); // per-voice gain ramps for click-free start/stop
+  vg.gain.value = 0;
+  vg.connect(droneBus.lp);
+  const f = voiceFreq(v);
   const osc = audioCtx.createOscillator();
   osc.type = "sine";
   osc.frequency.value = f;
-  osc.connect(lp);
+  osc.connect(vg);
   osc.start();
   let oscOct = null;
   if (droneOctaveDown.checked) {
@@ -1786,17 +2201,17 @@ function startDroneNodes() {
     oscOct.frequency.value = f / 2;
     const og = audioCtx.createGain();
     og.gain.value = 0.7;
-    oscOct.connect(og).connect(lp);
+    oscOct.connect(og).connect(vg);
     oscOct.start();
   }
-  out.gain.setTargetAtTime(Number(droneVol.value) / 100, audioCtx.currentTime, 0.04);
-  droneNodes = { osc, oscOct, out };
+  vg.gain.setTargetAtTime(1, audioCtx.currentTime, 0.04);
+  v.nodes = { osc, oscOct, vg };
 }
-function stopDroneNodes(immediate) {
-  if (!droneNodes) return;
-  const n = droneNodes;
-  droneNodes = null;
-  try { n.out.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04); } catch (e) {}
+function stopVoiceNodes(v, immediate) {
+  if (!v.nodes) return;
+  const n = v.nodes;
+  v.nodes = null;
+  try { n.vg.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04); } catch (e) {}
   const stop = () => {
     try { n.osc.stop(); } catch (e) {}
     try { if (n.oscOct) n.oscOct.stop(); } catch (e) {}
@@ -1804,23 +2219,35 @@ function stopDroneNodes(immediate) {
   if (immediate) stop();
   else setTimeout(stop, 150);
 }
-function setDrone(on) {
-  droneOn = on;
-  droneToggle.classList.toggle("active", on);
-  droneToggle.setAttribute("aria-pressed", on ? "true" : "false");
-  droneToggle.textContent = on ? "On" : "Off";
-  if (on) startDroneNodes();
-  else stopDroneNodes(false);
+function setVoice(v, on) {
+  v.on = on;
+  v.toggle.classList.toggle("active", on);
+  v.toggle.setAttribute("aria-pressed", on ? "true" : "false");
+  v.toggle.textContent = on ? "On" : "Off";
+  if (on) startVoiceNodes(v);
+  else stopVoiceNodes(v, false);
+  droneOn = droneVoices.some((x) => x.on);
 }
-droneToggle.addEventListener("click", () => { setDrone(!droneOn); });
+// setDrone(false) is the teardown hook (stops every voice); setDrone(true) restarts active ones.
+function setDrone(on) {
+  if (!on) { droneVoices.forEach((v) => setVoice(v, false)); return; }
+  droneVoices.forEach((v) => { if (v.on) startVoiceNodes(v); });
+}
+droneVoices.forEach((v) => {
+  v.toggle.addEventListener("click", () => setVoice(v, !v.on));
+  [v.note, v.octave].forEach((el) => {
+    el.addEventListener("change", () => { if (v.on) startVoiceNodes(v); });
+  });
+});
 droneVol.addEventListener("input", () => {
-  if (droneNodes && audioCtx) {
-    droneNodes.out.gain.setTargetAtTime(Number(droneVol.value) / 100, audioCtx.currentTime, 0.02);
+  if (droneBus && audioCtx) {
+    droneBus.out.gain.setTargetAtTime(Number(droneVol.value) / 100, audioCtx.currentTime, 0.02);
   }
 });
-[droneNote, droneOctave, droneOctaveDown].forEach((el) => {
-  el.addEventListener("change", () => { if (droneOn) startDroneNodes(); });
+droneOctaveDown.addEventListener("change", () => {
+  droneVoices.forEach((v) => { if (v.on) startVoiceNodes(v); });
 });
+showDroneButton.addEventListener("click", () => { selectSection(droneBody, showDroneButton); });
 
 // --- Journal ---
 function renderJournal() {
@@ -1846,21 +2273,42 @@ function renderJournal() {
     row.appendChild(meta);
     journalEl.appendChild(row);
   });
+
+  // Recent practice sessions (with notes), newest first.
+  const sessions = PracticeStore.recentSessions(20);
+  if (sessions.length) {
+    const head = document.createElement("div");
+    head.className = "journal-subhead";
+    head.textContent = "Recent sessions";
+    journalEl.appendChild(head);
+    sessions.forEach((s) => {
+      const row = document.createElement("div");
+      row.className = "journal-row session-row";
+      const left = document.createElement("span");
+      left.className = "j-title";
+      left.textContent = s.note || s.title || "(no note)";
+      const meta = document.createElement("span");
+      meta.className = "j-meta";
+      meta.textContent = `${fmtClock(s.ms)} · ${s.reps} reps · ${s.date}`;
+      row.appendChild(left);
+      row.appendChild(meta);
+      journalEl.appendChild(row);
+    });
+  }
 }
 journalToggle.addEventListener("click", () => {
   if (journalEl.style.display === "none") {
     renderJournal();
     journalEl.style.display = "";
-    journalToggle.textContent = "Hide journal";
+    journalToggle.textContent = "Hide";
   } else {
     journalEl.style.display = "none";
-    journalToggle.textContent = "Show journal";
+    journalToggle.textContent = "Journal";
   }
 });
 
-// Fetch + decode the current source into an AudioBuffer (used by loop export
-// and metronome tempo sync). The result is memoized per track so doing both
-// Sync and Export on one song decodes only once; the cache is invalidated when
+// Fetch + decode the current source into an AudioBuffer (used by metronome
+// tempo sync). The result is memoized per track; the cache is invalidated when
 // the track changes (teardownTrack / loadFile / loadAudio).
 let _decodedCache = { key: null, buffer: null, promise: null };
 function decodedCacheKey() {
@@ -1896,44 +2344,16 @@ async function decodeCurrentSource() {
   }
 }
 
-// --- Export loop region as WAV ---
-async function exportLoop() {
-  if (!loopRegion) {
-    toast("Create a loop first, then export it.");
-    return;
-  }
-  const original = exportBtn.textContent;
-  exportBtn.disabled = true;
-  exportBtn.textContent = "Rendering…";
-  try {
-    const buf = await decodeCurrentSource();
-    const blob = AudioExport.encodeWav(buf, loopRegion.start, loopRegion.end);
-    const safe = (window.currentAudioTitle || "loop").replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${safe}_loop.wav`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  } catch (e) {
-    console.error("Loop export failed", e);
-    toast("Could not export the loop.", "error");
-  } finally {
-    exportBtn.disabled = false;
-    exportBtn.textContent = original;
-  }
-}
-exportBtn.addEventListener("click", exportLoop);
-
 showPracticeButton.addEventListener("click", () => {
   updatePracticeDisplay();
   if (journalEl.style.display !== "none") renderJournal();
-  togglePanel(practiceBody, showPracticeButton);
+  selectSection(practiceBody, showPracticeButton);
 });
 
 updateRepDisplay();
 updateMemorizeDisplay();
+updateSessionUI();
+updatePomoUI();
 updatePracticeDisplay();
 
 // ----- Piano -----
@@ -1976,5 +2396,11 @@ function playNote(key) {
 }
 
 showPianoButton.addEventListener("click", () => {
-  togglePanel(pianoBody, showPianoButton);
+  selectSection(pianoBody, showPianoButton);
+});
+
+// Fretboard: a placeholder section for future development. It opens like any
+// other tab; the panel just shows an "in development" state for now.
+showFretboardButton.addEventListener("click", () => {
+  selectSection(fretboardBody, showFretboardButton);
 });
