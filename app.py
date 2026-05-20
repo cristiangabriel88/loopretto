@@ -1,6 +1,7 @@
 """Entrypoint. Real app lives in the ``loopretto`` package (app factory)."""
 import logging
 import os
+import re
 import socket
 import threading
 import time
@@ -38,22 +39,37 @@ def _open_browser_when_ready(port, host="127.0.0.1", timeout=20.0):
         logging.getLogger(__name__).warning("Could not open a browser automatically.")
 
 
-def _strip_dev_warning(record):
-    """Drop Werkzeug's "development server" banner line, keep the address info.
+# Werkzeug access-log lines look like:
+#   127.0.0.1 - - [date] "GET /static/... HTTP/1.1" 200 -
+# Routine successful fetches of assets and the streamed audio file are pure
+# noise for a local single-user app (the audio stream alone fires many range
+# requests), so we drop them while keeping errors and the real actions visible.
+_QUIET_PREFIXES = ("/static/", "/audio/", "/favicon.ico")
+_ACCESS_RE = re.compile(r'"(?:GET|HEAD) (\S+) [^"]*" (\d{3})')
+
+
+def _quiet_werkzeug(record):
+    """Drop Werkzeug's dev-server banner and routine asset/audio access logs.
 
     Loopretto is local-only by design (see CLAUDE.md), so the production-WSGI
-    warning is noise. Werkzeug logs the whole startup banner as one record, so
-    we filter out just that line rather than silencing the logger.
+    warning is noise; Werkzeug logs the whole startup banner as one record, so
+    we strip just that line rather than silencing the logger.
     """
     msg = record.getMessage()
     if "This is a development server" in msg:
         kept = [ln for ln in msg.splitlines() if "This is a development server" not in ln]
         record.msg = "\n".join(kept)
         record.args = None
+        return True
+    m = _ACCESS_RE.search(msg)
+    if m:
+        path, status = m.group(1), m.group(2)
+        if status[0] in "23" and path.split("?", 1)[0].startswith(_QUIET_PREFIXES):
+            return False  # suppress routine successful asset/audio fetch
     return True
 
 
-logging.getLogger("werkzeug").addFilter(_strip_dev_warning)
+logging.getLogger("werkzeug").addFilter(_quiet_werkzeug)
 
 if __name__ == "__main__":
     # Auto-open the browser on launch. Skip if NO_BROWSER=1 (headless runs), and

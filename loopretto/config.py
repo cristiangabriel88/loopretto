@@ -37,6 +37,16 @@ class Config:
     AUDIO_DIR: str = os.environ.get("AUDIO_DIR", _PROJECT_ROOT)
     AUDIO_BASENAME: str = "audio"
 
+    # --- Practice journal export (local-only file write) ---
+    # Where the optional "Save journal to Documents" feature writes
+    # practice-journal.md + practice-data.json. Created on first save.
+    PRACTICE_JOURNAL_DIR: str = os.environ.get(
+        "PRACTICE_JOURNAL_DIR",
+        os.path.join(os.path.expanduser("~"), "Documents", "Practice Journal"),
+    )
+    # Reject absurd payloads (the journal is small text; cap defensively).
+    MAX_JOURNAL_BYTES: int = _int_env("MAX_JOURNAL_BYTES", 5 * 1024 * 1024)
+
     # --- Rate limiting (in-process memory; resets on restart, fine for local) ---
     # Off by default: this is a single-user local app, so the "Too Many Requests"
     # wall just gets in the way. Set RATE_LIMIT_ENABLED=1 to turn it back on.

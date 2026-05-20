@@ -106,6 +106,21 @@
 							<span class="menu-switch" aria-hidden="true"></span>
 						</button>
 
+						<button class="menu-item" id="journal-sync-toggle" type="button" role="menuitemcheckbox"
+							aria-checked="false">
+							<span class="menu-ic">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+									stroke-linecap="round" stroke-linejoin="round">
+									<path d="M4 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v3" />
+									<path d="M4 7v10a2 2 0 0 0 2 2h6" />
+									<path d="M17 14v6" />
+									<path d="M14.5 17.5 17 20l2.5-2.5" />
+								</svg>
+							</span>
+							<span class="menu-txt">Save journal to Documents</span>
+							<span class="menu-switch" aria-hidden="true"></span>
+						</button>
+
 						<div class="menu-sep"></div>
 
 						<div class="menu-section">
@@ -371,24 +386,16 @@
 					<span class="tag" id="reps-tag" style="display:none">&times; <span id="reps-tag-num">0</span></span>
 				</div>
 				<div class="right">
-					<span class="tag note-tag" id="note-tag" style="display:none">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-							stroke-linecap="round" stroke-linejoin="round">
-							<path d="M9 18V5l12-2v13" />
-							<circle cx="6" cy="18" r="3" />
-							<circle cx="18" cy="16" r="3" />
-						</svg>
-						<span class="note-tag-label">root</span>
-						<span id="note-root">&mdash;</span>
-					</span>
-					<button class="piano-toggle" id="showNotesButton" title="Detect the root note being played" aria-pressed="false" disabled>
+					<button class="piano-toggle notes-toggle" id="showNotesButton"
+						title="Detect the root note being played" aria-pressed="false" disabled>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
 							stroke-linejoin="round">
 							<path d="M9 18V5l12-2v13" />
 							<circle cx="6" cy="18" r="3" />
 							<circle cx="18" cy="16" r="3" />
 						</svg>
-						Notes
+						<span class="notes-toggle-label">Root</span>
+						<span class="notes-toggle-val" id="note-root" aria-live="polite"></span>
 					</button>
 					<div class="control-group wave-zoom" title="Waveform zoom">
 						<span class="label">Zoom</span>
@@ -538,8 +545,8 @@
 						</svg>
 						<span class="tab-label">Piano</span>
 					</button>
-					<button class="section-tab section-tab--soon" id="showFretboardButton" type="button" role="tab"
-						aria-selected="false" aria-controls="fretboard-body" title="Fretboard (coming soon)" disabled>
+					<button class="section-tab" id="showFretboardButton" type="button" role="tab"
+						aria-selected="false" aria-controls="fretboard-body" title="Interactive guitar &amp; bass fretboard" disabled>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
 							stroke-linecap="round" stroke-linejoin="round">
 							<rect x="3" y="4" width="18" height="16" rx="2" />
@@ -547,7 +554,6 @@
 							<path d="M8 4v16M13 4v16M18 4v16" />
 						</svg>
 						<span class="tab-label">Fretboard</span>
-						<span class="tab-badge">Soon</span>
 					</button>
 				</div>
 			</div>
@@ -650,6 +656,18 @@
 							<button class="toggle-pill" id="memorize-toggle" aria-pressed="false">Off</button>
 							<span class="stepper-value" id="memorize-level">off</span>
 						</div>
+					</div>
+				</div>
+
+				<div class="practice-block pb-wide">
+					<div class="practice-block-title">Journal file</div>
+					<div class="practice-row">
+						<button class="toggle-pill" id="journal-sync-pill" aria-pressed="false">Off</button>
+						<span class="label">Auto-save to Documents</span>
+						<button class="ghost-btn small" id="journal-save-now">Save now</button>
+					</div>
+					<div class="journal-sync-status pstat-lbl" id="journal-sync-status">
+						Saves to Documents&#47;Practice&nbsp;Journal as Markdown + JSON.
 					</div>
 				</div>
 
@@ -850,25 +868,25 @@
 			<div class="piano-keys">
 				<div class="keys-inner">
 					<div data-note="C" class="key white">
-						<span class="note-label">C</span><span class="kbd-label">Z</span>
+						<span class="kbd-label">Z</span>
 					</div>
 					<div data-note="D" class="key white">
-						<span class="note-label">D</span><span class="kbd-label">X</span>
+						<span class="kbd-label">X</span>
 					</div>
 					<div data-note="E" class="key white">
-						<span class="note-label">E</span><span class="kbd-label">C</span>
+						<span class="kbd-label">C</span>
 					</div>
 					<div data-note="F" class="key white">
-						<span class="note-label">F</span><span class="kbd-label">V</span>
+						<span class="kbd-label">V</span>
 					</div>
 					<div data-note="G" class="key white">
-						<span class="note-label">G</span><span class="kbd-label">B</span>
+						<span class="kbd-label">B</span>
 					</div>
 					<div data-note="A" class="key white">
-						<span class="note-label">A</span><span class="kbd-label">N</span>
+						<span class="kbd-label">N</span>
 					</div>
 					<div data-note="B" class="key white">
-						<span class="note-label">B</span><span class="kbd-label">M</span>
+						<span class="kbd-label">M</span>
 					</div>
 					<div data-note="Db" class="key black" style="left:49px"><span class="kbd-label">S</span></div>
 					<div data-note="Eb" class="key black" style="left:117px"><span class="kbd-label">D</span></div>
@@ -892,38 +910,33 @@
 			<audio id="B" src="{{ url_for('static', filename='piano/B.mp3') }}"></audio>
 		</div>
 
-		<!-- Fretboard (placeholder for future development) -->
+		<!-- Fretboard: an interactive guitar / bass neck. Click any position to hear
+		     it (a synthesised pluck, no samples) and light up every octave of that
+		     pitch across the neck. The board itself is built in app.js. -->
 		<div class="metro-card fretboard-card" id="fretboard-body">
-			<div class="metro-head">
-				<h3>Fretboard</h3>
-				<p>An interactive guitar &amp; bass fretboard - see the detected key, scales and chord shapes
-					mapped to your instrument. Coming in a future update.</p>
+			<div class="metro-head fb-head">
+				<div class="fb-head-text">
+					<h3>Fretboard</h3>
+					<p>Click any fret to hear it and see every place that note lives on the neck.</p>
+				</div>
+				<div class="fb-controls">
+					<div class="seg" id="fb-instrument" role="group" aria-label="Instrument">
+						<button class="seg-btn active" type="button" data-inst="guitar"
+							aria-pressed="true">Guitar</button>
+						<button class="seg-btn" type="button" data-inst="bass"
+							aria-pressed="false">Bass</button>
+					</div>
+					<button class="toggle-pill" id="fb-labels" type="button" aria-pressed="false"
+						title="Show every note name">Labels</button>
+				</div>
 			</div>
-			<div class="fretboard-stage" aria-hidden="true">
-				<div class="fretboard-neck">
-					<span class="fb-string"></span>
-					<span class="fb-string"></span>
-					<span class="fb-string"></span>
-					<span class="fb-string"></span>
-					<span class="fb-string"></span>
-					<span class="fb-string"></span>
-					<span class="fb-fret" style="left:16%"></span>
-					<span class="fb-fret" style="left:32%"></span>
-					<span class="fb-fret" style="left:48%"></span>
-					<span class="fb-fret" style="left:64%"></span>
-					<span class="fb-fret" style="left:80%"></span>
-					<span class="fb-dot" style="left:40%;top:50%"></span>
-					<span class="fb-dot" style="left:72%;top:33%"></span>
-					<span class="fb-dot" style="left:72%;top:67%"></span>
-				</div>
-				<div class="fretboard-badge">
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
-						stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="9" />
-						<path d="M12 7.5V12l3 2" />
-					</svg>
-					<span>In development</span>
-				</div>
+			<div class="fb-readout" aria-live="polite">
+				<span class="fb-readout-note" id="fb-readout-note">&mdash;</span>
+				<span class="fb-readout-meta" id="fb-readout-meta">Standard tuning &middot; E A D G B E</span>
+			</div>
+			<div class="fb-scroll">
+				<div class="fb-board" id="fb-board"
+					data-sample-base="{{ url_for('static', filename='instruments') }}"></div>
 			</div>
 		</div>
 

@@ -1,0 +1,15 @@
+Fretboard instrument samples
+=============================
+
+The guitar (`guitar/`) and bass (`bass/`) note recordings used by the Fretboard
+panel are a curated subset of the tonejs-instruments sample pack:
+
+    https://github.com/nbrosowsky/tonejs-instruments
+    (guitar-acoustic and bass-electric)
+
+License: Creative Commons Attribution 3.0 (CC-BY 3.0).
+Per that pack's notes, the underlying recordings come from a variety of
+public-domain sources.
+
+In Loopretto these are pitch-shifted (via Web Audio playbackRate) to cover every
+fret, so only a handful of anchor notes per instrument are bundled.

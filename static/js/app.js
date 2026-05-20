@@ -46,8 +46,7 @@ const pitchDownButton = $("pitch-down");
 const pitchUpButton = $("pitch-up");
 const pitchDisplay = $("pitch-display");
 
-const noteTag = $("note-tag");
-const noteRootEl = $("note-root");
+const noteRootEl = $("note-root"); // the live readout lives inside the Notes button
 
 const loadingZone = $("loading-zone");
 const loadingIndicator = $("loading-indicator");
@@ -96,6 +95,10 @@ const bgRow = $("bg-row");
 const surfaceRow = $("surface-row");
 const zenButton = $("zen-mode");
 const minimalToggle = $("minimal-toggle");
+const journalSyncToggle = $("journal-sync-toggle");
+const journalSyncPill = $("journal-sync-pill");
+const journalSaveNow = $("journal-save-now");
+const journalSyncStatus = $("journal-sync-status");
 
 // ----- State -----
 let fileIsLoaded = false;
@@ -470,6 +473,113 @@ let savedMinimalStart = false;
 try { savedMinimalStart = localStorage.getItem("loopretto.minimalStart") === "1"; } catch (e) {}
 applyMinimalStart(savedMinimalStart);
 
+// ----- Practice journal -> Documents folder (local-only file write) -----
+// One flag (loopretto.journalSync) mirrored in two toggles: the burger-menu
+// switch and the Practice-panel pill. While on, the journal is written to
+// ~/Documents/Practice Journal on every session Stop and on page close; a
+// "Save now" button always writes on demand.
+let journalSyncOn = false;
+function applyJournalSync(on) {
+  journalSyncOn = on;
+  journalSyncToggle.setAttribute("aria-checked", on ? "true" : "false");
+  journalSyncPill.classList.toggle("active", on);
+  journalSyncPill.setAttribute("aria-pressed", on ? "true" : "false");
+  journalSyncPill.textContent = on ? "On" : "Off";
+  try { localStorage.setItem("loopretto.journalSync", on ? "1" : "0"); } catch (e) {}
+}
+
+// Build the human-readable journal from PracticeStore (mirrors renderJournal).
+function buildJournalMarkdown() {
+  const pad = (n) => String(n).padStart(2, "0");
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
+    `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const t = PracticeStore.today();
+  const goal = PracticeStore.getGoal();
+  const streak = PracticeStore.refreshStreak();
+  const goalMet = t.ms >= goal * 60000 ? " (met)" : "";
+
+  const lines = [
+    "# Practice Journal",
+    `_Updated ${stamp}_`,
+    "",
+    "## Today",
+    `${fmtClock(t.ms)} · ${t.reps} reps · goal ${goal} min${goalMet}`,
+    `Streak: ${streak.current} day${streak.current === 1 ? "" : "s"} (best ${streak.best})`,
+    "",
+  ];
+
+  const songs = PracticeStore.songs();
+  if (songs.length) {
+    lines.push("## Songs", "");
+    songs.forEach((s) => {
+      lines.push(`- **${s.title || s.id}** — ${fmtClock(s.totalMs)} · ${s.reps} reps · last ${s.last || "-"}`);
+    });
+    lines.push("");
+  }
+
+  const sessions = PracticeStore.recentSessions(100);
+  if (sessions.length) {
+    lines.push("## Recent sessions", "");
+    sessions.forEach((s) => {
+      const bits = [`${fmtClock(s.ms)}`, `${s.reps} reps`];
+      if (s.pomos) bits.push(`${s.pomos} pomodoro${s.pomos === 1 ? "" : "s"}`);
+      lines.push(`### ${s.date} — ${s.title || "(untitled)"}`);
+      lines.push(bits.join(" · "));
+      if (s.note) lines.push("", `> ${s.note.replace(/\n/g, "\n> ")}`);
+      lines.push("");
+    });
+  }
+
+  return lines.join("\n");
+}
+
+async function saveJournalToDisk({ silent } = {}) {
+  let dataJson;
+  try { dataJson = localStorage.getItem("loopretto.practice"); } catch (e) { dataJson = null; }
+  if (!dataJson) { if (!silent) toast("No practice logged yet.", "info"); return; }
+  try {
+    const res = await fetch("/save_journal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ markdown: buildJournalMarkdown(), data: dataJson }),
+    });
+    const out = await res.json();
+    if (!res.ok) throw new Error(out.error || "Save failed");
+    if (journalSyncStatus) journalSyncStatus.textContent = "Saved to " + out.dir;
+    if (!silent) toast("Journal saved to Documents", "success");
+  } catch (err) {
+    if (!silent) toast("Couldn't save journal: " + err.message, "error");
+  }
+}
+
+journalSyncToggle.addEventListener("click", (e) => {
+  e.preventDefault(); // menu stays open
+  applyJournalSync(!journalSyncOn);
+  if (journalSyncOn) saveJournalToDisk({ silent: false });
+});
+journalSyncPill.addEventListener("click", () => {
+  applyJournalSync(!journalSyncOn);
+  if (journalSyncOn) saveJournalToDisk({ silent: false });
+});
+journalSaveNow.addEventListener("click", () => saveJournalToDisk({ silent: false }));
+try { applyJournalSync(localStorage.getItem("loopretto.journalSync") === "1"); } catch (e) { applyJournalSync(false); }
+
+// On a hard close, persist the latest journal if auto-save is on. fetch() won't
+// reliably complete during unload, so use sendBeacon (the route reads the
+// application/json Blob via get_json just like a normal POST).
+window.addEventListener("beforeunload", () => {
+  if (!journalSyncOn) return;
+  let dataJson;
+  try { dataJson = localStorage.getItem("loopretto.practice"); } catch (e) { return; }
+  if (!dataJson) return;
+  const body = new Blob(
+    [JSON.stringify({ markdown: buildJournalMarkdown(), data: dataJson })],
+    { type: "application/json" }
+  );
+  navigator.sendBeacon("/save_journal", body);
+});
+
 // ----- Audio element + Web Audio graph -----
 // We own the <audio> element so the Web Audio graph survives across loads.
 // WaveSurfer plays through it; routing it via an AudioContext gives a stable
@@ -759,8 +869,12 @@ wavesurfer.on("finish", () => {
 // Loop: when the playhead leaves the loop region, jump back to its start.
 wsRegions.on("region-out", (region) => {
   if (loopRegion && region.id === loopRegion.id) {
+    // Only a genuine loop-around — the playhead reaching the loop end during
+    // playback — counts as a rep. The play/pause toggle also seeks to loopStart,
+    // which fires region-out while paused; those manual seeks must not log a rep.
+    const playing = wavesurfer.isPlaying();
     wavesurfer.setTime(region.start);
-    onLoopRestart();
+    if (playing) onLoopRestart();
   }
 });
 
@@ -1035,8 +1149,13 @@ downloadAudioButton.addEventListener("click", () => {
     a.href = currentObjectURL;
     a.download = audioFile; // original filename already has its extension
   } else {
+    // Keep the real video title; only strip characters illegal in filenames.
     const safeTitle = (window.currentAudioTitle || "audio")
-      .replace(/[^a-z0-9]/gi, "_").toLowerCase();
+      .replace(/[<>:"/\\|?*\x00-\x1f]/g, "") // chars Windows/most OSes forbid
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\.+$/, "") // no trailing dots (Windows)
+      || "audio";
     const ext = audioFile.split(".").pop();
     a.href = `/audio/${audioFile}?t=${Date.now()}`;
     a.download = `${safeTitle}.${ext}`;
@@ -1205,8 +1324,13 @@ function renderSetlistPopover() {
     row.textContent = (inIt ? "✓ " : "+ ") + n;
     row.addEventListener("click", () => {
       if (!song) return;
-      if (SetlistStore.has(n, song.id)) SetlistStore.removeSong(n, song.id);
-      else SetlistStore.addSong(n, song);
+      if (SetlistStore.has(n, song.id)) {
+        SetlistStore.removeSong(n, song.id);
+        toast(`Removed from "${n}"`, "info");
+      } else {
+        SetlistStore.addSong(n, song);
+        toast(`Saved to "${n}"`, "success");
+      }
       renderSetlistPopover();
       renderSetlists();
     });
@@ -1228,7 +1352,12 @@ setlistPopoverNew.addEventListener("submit", (e) => {
   if (!name) return;
   const song = currentSongForSetlist();
   SetlistStore.create(name);
-  if (song) SetlistStore.addSong(name, song);
+  if (song) {
+    SetlistStore.addSong(name, song);
+    toast(`Saved to "${name}"`, "success");
+  } else {
+    toast(`Created setlist "${name}"`, "success");
+  }
   setlistNewName.value = "";
   renderSetlistPopover();
   renderSetlists();
@@ -1704,16 +1833,18 @@ function setNotesEnabled(on) {
   notesOn = on;
   showNotesButton.classList.toggle("active", on);
   showNotesButton.setAttribute("aria-pressed", on ? "true" : "false");
-  noteTag.style.display = on ? "inline-flex" : "none";
   if (on) {
     ensureAudioGraph();
     pcWeights.fill(0);
-    noteRootEl.textContent = "-";
+    noteRootEl.textContent = "–"; // placeholder until a root is detected
     if (!noteRafId) detectLoop();
-  } else if (noteRafId) {
-    cancelAnimationFrame(noteRafId);
-    noteRafId = null;
-    noteRootEl.textContent = "-";
+  } else {
+    // Off: the button is just "Notes" again — clear the in-button readout.
+    noteRootEl.textContent = "";
+    if (noteRafId) {
+      cancelAnimationFrame(noteRafId);
+      noteRafId = null;
+    }
   }
 }
 showNotesButton.addEventListener("click", () => { setNotesEnabled(!notesOn); });
@@ -1933,6 +2064,7 @@ function stopSession() {
     reps: sessionReps,
     pomos: pomoCompleted,
   });
+  if (journalSyncOn) saveJournalToDisk({ silent: true });
   sessionActive = false;
   sessionMarkTs = null;
   if (sessionTickId) { clearInterval(sessionTickId); sessionTickId = null; }
@@ -2425,8 +2557,276 @@ showPianoButton.addEventListener("click", () => {
   selectSection(pianoBody, showPianoButton);
 });
 
-// Fretboard: a placeholder section for future development. It opens like any
-// other tab; the panel just shows an "in development" state for now.
+// ----- Fretboard (interactive guitar / bass neck) -----
+// The neck is built from a shared CSS grid: a fret-number row, an inlay overlay
+// and one row per string, all using --fb-cols so columns line up. Clicking a
+// position synthesises a plucked-string tone (Karplus-Strong, no samples) and
+// lights up every spot on the neck that shares that pitch class.
+const FB_NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const FB_FRETS = 12;
+const FB_INLAYS = [3, 5, 7, 9]; // 12 is a double inlay, handled separately
+const FB_TUNINGS = {
+  // strings run low → high; gauges in px (thick low strings → thin high ones);
+  // `wound` = how many of the low strings get the wrapped-wire texture.
+  guitar: { strings: [40, 45, 50, 55, 59, 64], gauges: [2.6, 2.3, 2.0, 1.6, 1.3, 1.1], wound: 3, tuning: "E A D G B E" },
+  bass:   { strings: [28, 33, 38, 43],         gauges: [3.2, 2.7, 2.2, 1.8],          wound: 4, tuning: "E A D G" },
+};
+
+let fbInstrument = "guitar";
+let fbLabels = false;
+let fbPcTimer = 0;
+
+const fbBoard = $("fb-board");
+const fbInstrumentSeg = $("fb-instrument");
+const fbLabelsBtn = $("fb-labels");
+const fbReadoutNote = $("fb-readout-note");
+const fbReadoutMeta = $("fb-readout-meta");
+
+function fbName(midi) { return FB_NOTE_NAMES[((midi % 12) + 12) % 12]; }
+function fbOctave(midi) { return Math.floor(midi / 12) - 1; }
+function fbFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+function fbOrdinal(n) {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function renderFretboard() {
+  const cfg = FB_TUNINGS[fbInstrument];
+  const n = cfg.strings.length;
+  fbBoard.style.setProperty("--fb-strings", String(n));
+
+  let html = '<div class="fb-fretnums" aria-hidden="true"><span class="fb-fretnum">0</span>';
+  for (let f = 1; f <= FB_FRETS; f++) {
+    const mark = (FB_INLAYS.includes(f) || f === 12) ? " is-mark" : "";
+    html += `<span class="fb-fretnum${mark}">${f}</span>`;
+  }
+  html += "</div><div class=\"fb-neck\"><div class=\"fb-inlays\" aria-hidden=\"true\"><span></span>";
+  for (let f = 1; f <= FB_FRETS; f++) {
+    if (f === 12) html += '<span class="fb-inlay fb-inlay--double"></span>';
+    else if (FB_INLAYS.includes(f)) html += '<span class="fb-inlay"></span>';
+    else html += "<span></span>";
+  }
+  html += '</div><div class="fb-strings">';
+  // Render top → bottom as high string → low string, so the thickest (lowest)
+  // string sits at the bottom — the player's-eye / tab view. `s` indexes the
+  // physical string (0 = lowest), so gauge/wound/number stay tied to the string.
+  for (let row = 0; row < n; row++) {
+    const s = n - 1 - row;
+    const open = cfg.strings[s];
+    const stringNo = n - s; // 1 = highest-pitched (thinnest), n = lowest (thickest)
+    const wound = s < cfg.wound ? " is-wound" : "";
+    html += `<div class="fb-row${wound}" style="--g:${cfg.gauges[s]}px"><span class="fb-line" aria-hidden="true"></span>`;
+    for (let f = 0; f <= FB_FRETS; f++) {
+      const midi = open + f;
+      const pc = ((midi % 12) + 12) % 12;
+      const full = `${fbName(midi)}${fbOctave(midi)}`;
+      const cls = "fb-cell" + (f === 0 ? " fb-open" : " fb-fret") + (f === 1 ? " fb-first" : "");
+      html += `<button type="button" class="${cls}" data-midi="${midi}" data-pc="${pc}" `
+        + `data-string="${stringNo}" data-fret="${f}" aria-label="${full}, ${fbOrdinal(stringNo)} string, `
+        + `${f === 0 ? "open" : "fret " + f}"><span class="fb-dot"><span class="fb-dot-name">${fbName(midi)}</span></span></button>`;
+    }
+    html += "</div>";
+  }
+  html += "</div></div>";
+
+  fbBoard.innerHTML = html;
+  fbBoard.classList.toggle("show-labels", fbLabels);
+  fbReadoutMeta.textContent = `Standard tuning · ${cfg.tuning}`;
+}
+
+// ----- Note playback: real recorded samples, with a synth fallback -----
+// Each instrument bundles a handful of anchor recordings (CC-BY, see
+// static/instruments/CREDITS.txt); the rest of the neck is reached by pitch-
+// shifting the nearest anchor via playbackRate, kept within ~3 semitones so the
+// timbre stays natural. Until a kit finishes decoding (or if it fails) we fall
+// back to the Karplus-Strong synth so a click never produces silence.
+const FB_SAMPLES = {
+  guitar: { dir: "guitar", notes: { 40: "E2", 45: "A2", 50: "D3", 55: "G3", 60: "C4", 65: "F4", 70: "As4", 74: "D5" } },
+  bass:   { dir: "bass",   notes: { 28: "E1", 34: "As1", 40: "E2", 46: "As2", 52: "E3", 55: "G3" } },
+};
+const fbSampleBase = (fbBoard && fbBoard.dataset.sampleBase) || "";
+const fbBuffers = { guitar: {}, bass: {} };
+// load state per instrument: undefined = untouched, Promise = loading,
+// "ready" = at least one buffer decoded, "error" = nothing decoded.
+const fbLoadState = {};
+
+function fbLoadSamples(inst) {
+  if (fbLoadState[inst] === "ready" || fbLoadState[inst] === "error") return;
+  if (fbLoadState[inst]) return; // a load promise is already in flight
+  ensureAudioGraph();
+  if (!audioCtx || !fbSampleBase) { fbLoadState[inst] = "error"; return; }
+  const spec = FB_SAMPLES[inst];
+  const jobs = Object.entries(spec.notes).map(([midi, note]) =>
+    fetch(`${fbSampleBase}/${spec.dir}/${note}.mp3`)
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then((ab) => audioCtx.decodeAudioData(ab))
+      .then((buf) => { fbBuffers[inst][midi] = buf; })
+      .catch(() => { /* skip this anchor; others may still load */ })
+  );
+  fbLoadState[inst] = Promise.all(jobs).then(() => {
+    fbLoadState[inst] = Object.keys(fbBuffers[inst]).length ? "ready" : "error";
+  });
+}
+
+function fbPluckSample(midi, inst) {
+  const buffers = fbBuffers[inst];
+  let bestMidi = null, bestDist = Infinity;
+  for (const k in buffers) {
+    const dist = Math.abs(midi - Number(k));
+    if (dist < bestDist) { bestDist = dist; bestMidi = Number(k); }
+  }
+  if (bestMidi === null) { fbPluckSynth(midi); return; }
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const src = ctx.createBufferSource();
+  src.buffer = buffers[bestMidi];
+  src.playbackRate.value = Math.pow(2, (midi - bestMidi) / 12);
+  const g = ctx.createGain();
+  // tiny fade-in kills the start click; the sample's own tail does the decay.
+  const peak = inst === "bass" ? 0.95 : 0.85;
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(peak, now + 0.006);
+  src.connect(g);
+  g.connect(ctx.destination);
+  src.start(now);
+  src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (e) { /* already gone */ } };
+}
+
+function fbPluck(midi) {
+  ensureAudioGraph();
+  if (!audioCtx) return;
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  const inst = fbInstrument;
+  if (fbLoadState[inst] === "ready") { fbPluckSample(midi, inst); return; }
+  fbLoadSamples(inst); // kick off (or no-op if already loading/failed)
+  fbPluckSynth(midi);  // cover this strike until the kit is decoded
+}
+
+// Plucked-string tone via Karplus-Strong: a short noise burst excites a tuned
+// delay-line feedback loop with a damping lowpass; loop gain decays to silence
+// so the note always terminates. Routed straight to destination (like the
+// metronome/drone) so transpose and Memorize fades don't touch it.
+function fbPluckSynth(midi) {
+  const ctx = audioCtx;
+  const now = ctx.currentTime;
+  const bass = fbInstrument === "bass";
+  const freq = fbFreq(midi);
+
+  const burstLen = Math.floor(ctx.sampleRate * 0.02);
+  const buf = ctx.createBuffer(1, burstLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < burstLen; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / burstLen);
+  const burst = ctx.createBufferSource();
+  burst.buffer = buf;
+
+  const delay = ctx.createDelay(0.05);
+  delay.delayTime.value = 1 / freq;
+  const damp = ctx.createBiquadFilter();
+  damp.type = "lowpass";
+  damp.frequency.value = bass ? 2400 : 5200;
+  const loop = ctx.createGain();
+  loop.gain.setValueAtTime(bass ? 0.97 : 0.95, now);
+  loop.gain.setTargetAtTime(0.0001, now + 0.05, bass ? 1.4 : 0.9);
+  delay.connect(damp);
+  damp.connect(loop);
+  loop.connect(delay);
+
+  const body = ctx.createBiquadFilter();
+  body.type = "lowpass";
+  body.frequency.value = bass ? 3600 : 7200;
+  const amp = ctx.createGain();
+  amp.gain.value = bass ? 0.6 : 0.5;
+  const dur = bass ? 3.6 : 2.8;
+  amp.gain.setTargetAtTime(0.0001, now + dur * 0.6, 0.5);
+
+  burst.connect(delay);
+  delay.connect(body);
+  body.connect(amp);
+  amp.connect(ctx.destination);
+  burst.start(now);
+  burst.stop(now + 0.02);
+  setTimeout(() => {
+    [burst, delay, damp, loop, body, amp].forEach((node) => { try { node.disconnect(); } catch (e) { /* already gone */ } });
+  }, (dur + 0.6) * 1000);
+}
+
+function fbClearPitch() {
+  fbBoard.querySelectorAll(".fb-cell.is-pc").forEach((c) => c.classList.remove("is-pc"));
+}
+
+fbBoard.addEventListener("click", (e) => {
+  const cell = e.target.closest(".fb-cell");
+  if (!cell) return;
+  const midi = Number(cell.dataset.midi);
+  const pc = cell.dataset.pc;
+  const fret = Number(cell.dataset.fret);
+  const stringNo = Number(cell.dataset.string);
+
+  fbPluck(midi);
+
+  fbClearPitch();
+  fbBoard.querySelectorAll(`.fb-cell[data-pc="${pc}"]`).forEach((c) => c.classList.add("is-pc"));
+  cell.classList.remove("is-hit");
+  void cell.offsetWidth; // restart the ripple animation
+  cell.classList.add("is-hit");
+  setTimeout(() => cell.classList.remove("is-hit"), 600);
+  if (fbPcTimer) clearTimeout(fbPcTimer);
+  fbPcTimer = setTimeout(fbClearPitch, 2400);
+
+  fbReadoutNote.textContent = `${fbName(midi)}${fbOctave(midi)}`;
+  fbReadoutMeta.textContent = `${fbOrdinal(stringNo)} string · ${fret === 0 ? "open string" : "fret " + fret}`;
+});
+
+fbInstrumentSeg.addEventListener("click", (e) => {
+  const btn = e.target.closest(".seg-btn");
+  if (!btn || btn.dataset.inst === fbInstrument) return;
+  fbInstrument = btn.dataset.inst;
+  fbInstrumentSeg.querySelectorAll(".seg-btn").forEach((b) => {
+    const on = b === btn;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  fbReadoutNote.textContent = "—";
+  renderFretboard();
+  saveFretboardPrefs();
+  fbLoadSamples(fbInstrument); // warm the new kit before the user clicks
+  // A bass neck has fewer (taller) rows, so the panel's natural height changes;
+  // re-pin the shared section height if the strip is visible.
+  if (sectionTabs && !sectionTabs.classList.contains("hidden")) syncSectionHeights();
+});
+
+fbLabelsBtn.addEventListener("click", () => {
+  fbLabels = !fbLabels;
+  fbLabelsBtn.classList.toggle("active", fbLabels);
+  fbLabelsBtn.setAttribute("aria-pressed", fbLabels ? "true" : "false");
+  fbBoard.classList.toggle("show-labels", fbLabels);
+  saveFretboardPrefs();
+});
+
+function saveFretboardPrefs() {
+  try {
+    localStorage.setItem("loopretto.fretboard", JSON.stringify({ inst: fbInstrument, labels: fbLabels }));
+  } catch (e) { /* storage unavailable; preferences just won't persist */ }
+}
+
+(function initFretboard() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("loopretto.fretboard") || "{}");
+    if (saved.inst === "bass" || saved.inst === "guitar") fbInstrument = saved.inst;
+    fbLabels = !!saved.labels;
+  } catch (e) { /* ignore malformed prefs */ }
+  fbInstrumentSeg.querySelectorAll(".seg-btn").forEach((b) => {
+    const on = b.dataset.inst === fbInstrument;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  fbLabelsBtn.classList.toggle("active", fbLabels);
+  fbLabelsBtn.setAttribute("aria-pressed", fbLabels ? "true" : "false");
+  renderFretboard();
+})();
+
 showFretboardButton.addEventListener("click", () => {
   selectSection(fretboardBody, showFretboardButton);
+  // Decode the current kit on first open so the first pluck is already a sample.
+  if (fretboardBody.classList.contains("show")) fbLoadSamples(fbInstrument);
 });

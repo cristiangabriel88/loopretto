@@ -1,0 +1,14 @@
+Reference piano samples
+=======================
+
+The note recordings in this folder (C3–B3, one per chromatic note) are from the
+tonejs-instruments sample pack:
+
+    https://github.com/nbrosowsky/tonejs-instruments  (piano)
+
+License: Creative Commons Attribution 3.0 (CC-BY 3.0).
+Per that pack's notes, the underlying recordings come from a variety of
+public-domain sources.
+
+File names use the app's own scheme (e.g. Db.mp3 = C#3, Gb.mp3 = F#3) so the
+front-end <audio id="..."> mapping is unchanged.

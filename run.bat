@@ -32,8 +32,8 @@ if not exist ".venv\Scripts\python.exe" (
         pause
         exit /b 1
     )
-    .venv\Scripts\python.exe -m pip install --upgrade pip
-    .venv\Scripts\python.exe -m pip install -r requirements.txt
+    .venv\Scripts\python.exe -m pip install --quiet --upgrade pip
+    .venv\Scripts\python.exe -m pip install --quiet -r requirements.txt
     if errorlevel 1 (
         echo Failed to install dependencies.
         pause

@@ -1121,26 +1121,6 @@ body.minimal-start .suggested { display: none; }
 .section-tab:disabled { opacity: 0.45; cursor: not-allowed; }
 .tab-label { letter-spacing: 0.004em; }
 
-/* "Soon" pill on the future Fretboard tab */
-.tab-badge {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--surface-3);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-.section-tab--soon.active .tab-badge {
-  background: oklch(from var(--accent) l c h / 0.16);
-  color: var(--accent);
-  border-color: var(--accent-line);
-}
-
 /* Panels glide in when their tab is picked: a crisp fade + small rise/settle.
    Every section is pinned to --section-min-h (the tallest panel, measured in
    app.js) so the card never resizes between tabs and the page stays put. */
@@ -1242,16 +1222,6 @@ body.minimal-start .suggested { display: none; }
   color: oklch(0.4 0 0);
   text-transform: uppercase;
 }
-.key.white .note-label {
-  position: absolute;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: "Space Grotesk", monospace;
-  font-size: 11px;
-  color: oklch(0.5 0 0);
-  font-weight: 500;
-}
 .key.black {
   position: absolute;
   top: 0;
@@ -1311,22 +1281,29 @@ body.minimal-start .suggested { display: none; }
   text-underline-offset: 2px;
 }
 
-/* ---- Root-note overlay ---- */
-.note-tag.note-tag { color: var(--accent); border-color: var(--accent-line); gap: 7px; }
-.note-tag .note-tag-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  opacity: 0.7;
-}
-.note-tag #note-root {
-  font-family: "Space Grotesk", system-ui;
-  font-weight: 700;
-  font-size: 13px;
-  min-width: 22px;
-  display: inline-block;
-  text-align: center;
+/* ---- Notes toggle: the button is the whole feature. Off, it's just "Notes";
+   on, it lights up and the detected root note appears inside it, live. ---- */
+.notes-toggle-val {
+  display: none;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 600;
+  font-size: 12.5px;
   font-feature-settings: "tnum";
+}
+.notes-toggle.active .notes-toggle-val {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 1px;
+  padding-left: 8px;
+  min-width: 20px;
+  border-left: 1px solid var(--accent-line);
+  /* fade/slide the value in when the toggle switches on */
+  animation: notesValIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes notesValIn {
+  from { opacity: 0; transform: translateX(-3px); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* Transpose readout accent when non-zero */
@@ -1414,72 +1391,223 @@ body.minimal-start .suggested { display: none; }
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
-/* ---- Fretboard placeholder (future development) ---- */
-.fretboard-stage {
+/* ---- Fretboard (interactive guitar / bass neck) ----
+   Layout is one shared CSS grid (--fb-cols) reused by the fret-number row, the
+   inlay overlay and every string row, so columns line up pixel-for-pixel. Fret
+   wires and the nut are drawn as inset box-shadows on the cells, so they read as
+   continuous vertical lines down the stacked rows. The board is built in app.js. */
+.fretboard-card { padding: 18px; }
+.fb-head { align-items: center; }
+.fb-head-text { min-width: 0; }
+.fb-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.fb-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 13px;
+  padding: 8px 13px;
+  min-height: 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.fb-readout-note {
+  font-family: "Space Grotesk", system-ui;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  min-width: 46px;
+}
+.fb-readout-meta {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  letter-spacing: -0.01em;
+}
+
+/* The neck can be wider than the panel on small screens; let it scroll. */
+.fb-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; margin: 0 -2px; }
+.fb-board {
+  --fb-open: 46px;
+  --fb-cols: var(--fb-open) repeat(12, minmax(32px, 1fr));
+  --fb-strings: 6;
+  min-width: 524px;
+}
+
+/* Fret numbers above the neck; inlay positions (3·5·7·9·12) read brighter. */
+.fb-fretnums { display: grid; grid-template-columns: var(--fb-cols); margin-bottom: 7px; }
+.fb-fretnum {
+  text-align: center;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+.fb-fretnum.is-mark { color: var(--text-muted); }
+
+.fb-neck {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, oklch(from var(--surface-3) l c h / 0.6), oklch(from var(--surface) l c h / 0.75)),
+    repeating-linear-gradient(90deg, transparent 0 3px, oklch(from var(--text) l c h / 0.013) 3px 4px);
+  box-shadow: var(--shadow-card), inset 0 1px 0 oklch(1 0 0 / 0.05);
+}
+
+/* Position inlays, centred in the fret gap and aligned via the shared grid. */
+.fb-inlays {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--fb-cols);
+  pointer-events: none;
+  z-index: 1;
+}
+.fb-inlay {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding: 14px 6px 6px;
+  justify-content: center;
+  gap: 30px;
 }
-.fretboard-neck {
+.fb-inlay::before, .fb-inlay--double::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: oklch(from var(--text) l c h / 0.11);
+  box-shadow: inset 0 1px 1px oklch(0 0 0 / 0.3), 0 0 0 1px oklch(1 0 0 / 0.03);
+}
+
+.fb-strings { position: relative; z-index: 2; }
+.fb-row {
   position: relative;
-  width: 100%;
-  max-width: 640px;
-  height: 140px;
-  border-radius: 14px;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 160% at 50% 0%, oklch(from var(--surface-3) l c h / 0.65) 0%, transparent 70%),
-    linear-gradient(180deg, oklch(from var(--surface-2) l c h / 0.6), oklch(from var(--surface) l c h / 0.4));
-  border: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: var(--fb-cols);
+  /* Keep the neck ~168px tall whether it's a 6-string guitar or 4-string bass. */
+  height: clamp(28px, calc(168px / var(--fb-strings)), 46px);
 }
-/* The first six children are the strings, so nth-child maps cleanly to them. */
-.fb-string {
+
+/* The string itself: a metallic horizontal line whose thickness is the gauge
+   (--g). Wound (lower) strings get a subtle wrap-wire texture. */
+.fb-line {
   position: absolute;
   left: 0;
   right: 0;
-  height: 1px;
-  background: var(--border-strong);
+  top: 50%;
+  transform: translateY(-50%);
+  height: var(--g, 2px);
+  border-radius: var(--g, 2px);
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    oklch(1 0 0 / 0.5),
+    oklch(from var(--text-dim) l c h / 0.55) 45%,
+    oklch(0 0 0 / 0.38));
+  box-shadow: 0 1px 1.5px oklch(0 0 0 / 0.35);
 }
-.fb-string:nth-child(1) { top: 12%; opacity: 0.55; }
-.fb-string:nth-child(2) { top: 26%; opacity: 0.65; }
-.fb-string:nth-child(3) { top: 40%; opacity: 0.75; height: 1.5px; }
-.fb-string:nth-child(4) { top: 56%; opacity: 0.85; height: 1.5px; }
-.fb-string:nth-child(5) { top: 72%; height: 2px; }
-.fb-string:nth-child(6) { top: 86%; height: 2px; }
-.fb-fret {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--border);
+.fb-row.is-wound .fb-line {
+  background-image:
+    linear-gradient(180deg, oklch(1 0 0 / 0.45), oklch(from var(--text-dim) l c h / 0.55) 45%, oklch(0 0 0 / 0.42)),
+    repeating-linear-gradient(90deg, oklch(1 0 0 / 0.16) 0 1px, transparent 1px 3px);
 }
-.fb-fret:first-of-type { box-shadow: -2px 0 0 oklch(from var(--text) l c h / 0.12); }
-.fb-dot {
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 4px oklch(from var(--accent) l c h / 0.08);
-}
-.fretboard-badge {
-  display: inline-flex;
+
+.fb-cell {
+  position: relative;
+  z-index: 2;
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 15px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  justify-content: center;
 }
-.fretboard-badge svg { width: 15px; height: 15px; }
+/* Fret wire on each fret cell's right edge; the first fret cell also carries the
+   bright nut on its left. Repeated per row, they form continuous lines. */
+.fb-cell.fb-fret { box-shadow: inset -1.5px 0 0 oklch(from var(--text) l c h / 0.17); }
+.fb-cell.fb-first {
+  box-shadow:
+    inset -1.5px 0 0 oklch(from var(--text) l c h / 0.17),
+    inset 3px 0 0 oklch(from var(--text) l c h / 0.42);
+}
+
+/* Note marker. Hidden until you hover, turn Labels on, or play a note. */
+.fb-dot {
+  position: relative;
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.3);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 0.16s ease, border-color 0.16s ease;
+}
+.fb-dot-name {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-muted);
+}
+.fb-board.show-labels .fb-dot { opacity: 0.5; transform: scale(0.9); }
+.fb-cell:hover .fb-dot {
+  opacity: 1;
+  transform: scale(1);
+  border-color: var(--accent-line);
+}
+.fb-cell:focus-visible { outline: none; }
+.fb-cell:focus-visible .fb-dot {
+  opacity: 1;
+  transform: scale(1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+/* Every position sharing the played pitch class glows softly. */
+.fb-cell.is-pc .fb-dot {
+  opacity: 1;
+  transform: scale(1);
+  background: oklch(from var(--accent) l c h / 0.16);
+  border-color: var(--accent-line);
+}
+.fb-cell.is-pc .fb-dot-name { color: var(--accent); }
+/* The exact note you struck: filled accent + an expanding ripple. */
+.fb-cell.is-hit .fb-dot {
+  opacity: 1;
+  transform: scale(1.06);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.fb-cell.is-hit .fb-dot-name { color: var(--accent-ink); }
+.fb-cell.is-hit .fb-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: fbRipple 0.6s ease-out forwards;
+}
+@keyframes fbRipple {
+  from { opacity: 0.6; transform: scale(0.7); }
+  to   { opacity: 0; transform: scale(2.1); }
+}
 
 /* ---- Practice panel ---- */
 .practice-grid {
@@ -1700,6 +1828,7 @@ body.minimal-start .suggested { display: none; }
   margin-top: 6px;
 }
 .session-row .j-title { max-width: 62%; font-style: italic; color: var(--text-muted); }
+.journal-sync-status { display: block; margin-top: 8px; font-size: 11px; color: var(--text-dim); }
 
 /* ---- Practice: session timer, goal, pomodoro ---- */
 .session-timer,

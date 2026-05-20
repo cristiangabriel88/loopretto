@@ -13,6 +13,7 @@ from flask import Flask
 from .config import Config
 from .extensions import limiter
 from .routes.audio import audio as audio_bp
+from .routes.journal import journal as journal_bp
 from .routes.pages import pages as pages_bp
 
 # Templates and static assets live at the repo root, not inside the package.
@@ -35,5 +36,6 @@ def create_app(config: type[Config] = Config) -> Flask:
 
     app.register_blueprint(pages_bp)
     app.register_blueprint(audio_bp)
+    app.register_blueprint(journal_bp)
 
     return app

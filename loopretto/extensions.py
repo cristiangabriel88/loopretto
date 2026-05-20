@@ -1,10 +1,16 @@
 """Flask extensions instantiated once and initialised in the app factory."""
 from __future__ import annotations
 
+import warnings
+
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from .config import Config
+
+# Flask-Limiter warns that in-memory storage isn't for production. Loopretto is
+# local single-user by design (see CLAUDE.md), so that warning is just noise.
+warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
 # In-process memory storage: resets on restart and isn't shared across workers.
 # Fine for a single-user local app; would need Redis for a multi-worker deploy.

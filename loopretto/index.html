@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Loopretto · Transcribe music by ear. Slow it down, get it down.</title>
+<meta name="description" content="Loopretto is a 100% local transcription room for musicians who learn by ear. Loop that difficult part in the song, slow it down without the chipmunk, isolate the instrument, check the pitch, and get it down. No login, no cloud, nothing leaves your machine." />
+<link rel="icon" type="image/png" href="images/favicon.png" />
+
+<!-- Fonts: distinctive editorial pairing -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+/* ============================================================
+   LOOPRETTO - showcase
+   Aesthetic: midnight analog studio. Warm near-black, bone
+   cream type, sodium-amber + cool mint accents, grain, a
+   recurring waveform motif. Editorial, asymmetric.
+   ============================================================ */
+
+:root{
+  --bg:        oklch(0.158 0.012 64);
+  --bg-2:      oklch(0.194 0.014 62);
+  --surface:   oklch(0.225 0.015 64);
+  --surface-2: oklch(0.262 0.016 66);
+  --ink:       oklch(0.940 0.018 82);
+  --ink-dim:   oklch(0.760 0.020 80);
+  --ink-faint: oklch(0.560 0.016 76);
+  --amber:     oklch(0.820 0.150 78);
+  --ember:     oklch(0.720 0.185 48);
+  --mint:      oklch(0.860 0.120 178);
+  --line:      oklch(0.420 0.012 72 / 0.45);
+  --line-soft: oklch(0.420 0.012 72 / 0.22);
+
+  --maxw: 1240px;
+  --r: 18px;
+  --ease: cubic-bezier(.22,.61,.36,1);
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, monospace;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html{ scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  font-size:clamp(16px,1.05vw,18px);
+  line-height:1.6;
+  font-weight:400;
+  letter-spacing:-0.005em;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---- Atmosphere: warm glow + grain ---- */
+body::before{
+  content:"";
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(60% 50% at 78% -5%, oklch(0.72 0.185 48 / 0.16), transparent 60%),
+    radial-gradient(50% 45% at 8% 8%, oklch(0.82 0.15 78 / 0.10), transparent 60%),
+    radial-gradient(70% 60% at 50% 110%, oklch(0.86 0.12 178 / 0.08), transparent 60%);
+}
+body::after{
+  content:"";
+  position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode:overlay;
+}
+main, header, footer, nav{ position:relative; z-index:2; }
+
+::selection{ background:var(--amber); color:var(--bg); }
+
+a{ color:inherit; text-decoration:none; }
+img{ max-width:100%; display:block; }
+
+.wrap{ width:100%; max-width:var(--maxw); margin-inline:auto; padding-inline:clamp(20px,5vw,56px); }
+
+/* ============================================================
+   Typographic helpers
+   ============================================================ */
+.tag{
+  font-family:var(--font-mono);
+  font-size:0.72rem; font-weight:500;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--ink-faint);
+  display:inline-flex; align-items:center; gap:0.6em;
+}
+.tag::before{
+  content:""; width:1.6em; height:1px; background:var(--amber); display:inline-block;
+}
+h1,h2,h3{ font-family:var(--font-display); font-weight:500; line-height:1.02; letter-spacing:-0.02em; }
+.display{
+  font-size:clamp(3rem, 9vw, 7.5rem);
+  font-weight:400;
+  font-optical-sizing:auto;
+  letter-spacing:-0.035em;
+}
+.section-h{ font-size:clamp(2rem,4.6vw,3.6rem); font-weight:500; }
+.lede{ font-size:clamp(1.05rem,1.5vw,1.32rem); color:var(--ink-dim); max-width:60ch; line-height:1.55; }
+em.it{ font-style:italic; color:var(--amber); }
+.serif-accent{ font-family:var(--font-display); font-style:italic; font-weight:400; }
+
+/* ============================================================
+   Local-only badge - the recurring signature
+   ============================================================ */
+.local-badge{
+  display:inline-flex; align-items:center; gap:0.55em;
+  font-family:var(--font-mono); font-size:0.7rem; font-weight:500;
+  letter-spacing:0.1em; text-transform:uppercase;
+  color:var(--mint);
+  border:1px solid oklch(0.86 0.12 178 / 0.4);
+  background:oklch(0.86 0.12 178 / 0.06);
+  padding:0.5em 0.9em; border-radius:999px;
+  white-space:nowrap;
+}
+.local-badge .dot{
+  width:7px; height:7px; border-radius:50%; background:var(--mint);
+  box-shadow:0 0 0 0 oklch(0.86 0.12 178 / 0.6);
+  animation:pulse 2.4s var(--ease) infinite;
+}
+@keyframes pulse{
+  0%{ box-shadow:0 0 0 0 oklch(0.86 0.12 178 / 0.5); }
+  70%{ box-shadow:0 0 0 8px oklch(0.86 0.12 178 / 0); }
+  100%{ box-shadow:0 0 0 0 oklch(0.86 0.12 178 / 0); }
+}
+.local-badge.amber{
+  color:var(--amber);
+  border-color:oklch(0.82 0.15 78 / 0.4);
+  background:oklch(0.82 0.15 78 / 0.06);
+}
+.local-badge.amber .dot{ background:var(--amber); animation:none; }
+
+/* ============================================================
+   Top nav
+   ============================================================ */
+nav.topnav{
+  position:fixed; top:0; left:0; right:0; z-index:60;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px clamp(20px,5vw,56px);
+  backdrop-filter:blur(12px);
+  background:linear-gradient(to bottom, oklch(0.158 0.012 64 / 0.86), oklch(0.158 0.012 64 / 0));
+  transition:background .4s var(--ease), border-color .4s var(--ease);
+  border-bottom:1px solid transparent;
+}
+nav.topnav.scrolled{
+  background:oklch(0.158 0.012 64 / 0.9);
+  border-bottom:1px solid var(--line-soft);
+}
+.brand{ display:flex; align-items:center; gap:0.6em; font-family:var(--font-display); font-size:1.3rem; font-weight:600; letter-spacing:-0.02em; }
+.brand .glyph{ display:inline-flex; }
+.navlinks{ display:flex; align-items:center; gap:clamp(14px,2vw,30px); }
+.navlinks a{ font-family:var(--font-mono); font-size:0.78rem; letter-spacing:0.04em; color:var(--ink-dim); transition:color .2s; }
+.navlinks a:hover{ color:var(--ink); }
+.navlinks .local-badge{ font-size:0.64rem; }
+@media(max-width:760px){ .navlinks a:not(.local-badge){ display:none; } }
+
+/* brand logo + nav icon links */
+.brand-logo{ width:30px; height:30px; object-fit:contain; display:block; filter:drop-shadow(0 2px 8px oklch(0.82 0.15 78 / 0.25)); }
+.icon-link{ display:inline-flex; color:var(--ink-dim); transition:color .2s, transform .2s var(--ease); }
+.icon-link svg{ width:21px; height:21px; }
+.icon-link:hover{ color:var(--amber); transform:translateY(-2px); }
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{ padding:clamp(120px,16vh,180px) 0 clamp(60px,9vh,110px); position:relative; }
+.hero-grid{ display:grid; grid-template-columns:1.05fr 0.95fr; gap:clamp(30px,5vw,70px); align-items:center; }
+@media(max-width:940px){ .hero-grid{ grid-template-columns:1fr; } }
+
+.hero-kicker{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-bottom:28px; }
+.hero-sub{ margin-top:26px; }
+.hero-actions{ display:flex; flex-wrap:wrap; gap:14px; margin-top:36px; align-items:center; }
+
+.btn{
+  display:inline-flex; align-items:center; gap:0.6em;
+  font-family:var(--font-mono); font-size:0.82rem; font-weight:500; letter-spacing:0.02em;
+  padding:0.92em 1.5em; border-radius:999px; cursor:pointer; border:1px solid var(--line);
+  transition:transform .25s var(--ease), background .25s, border-color .25s, color .25s;
+}
+.btn.primary{ background:var(--amber); color:oklch(0.18 0.02 64); border-color:var(--amber); font-weight:600; }
+.btn.primary:hover{ transform:translateY(-2px); box-shadow:0 12px 40px oklch(0.82 0.15 78 / 0.28); }
+.btn.ghost{ color:var(--ink); }
+.btn.ghost:hover{ border-color:var(--ink); transform:translateY(-2px); }
+
+.hero-meta{ display:flex; gap:28px; margin-top:46px; flex-wrap:wrap; }
+.hero-meta .m{ }
+.hero-meta .m b{ font-family:var(--font-display); font-size:1.9rem; font-weight:600; display:block; line-height:1; }
+.hero-meta .m span{ font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); }
+
+/* animated equalizer in hero side */
+.eq-card{
+  position:relative; border:1px solid var(--line); border-radius:24px; overflow:hidden;
+  background:linear-gradient(160deg, var(--bg-2), var(--bg));
+  padding:34px 30px 30px;
+  box-shadow:0 40px 90px -40px oklch(0 0 0 / 0.7);
+}
+.eq-card .corner{ position:absolute; top:16px; right:18px; font-family:var(--font-mono); font-size:0.66rem; color:var(--ink-faint); letter-spacing:0.1em; }
+.eq{ display:flex; align-items:flex-end; gap:5px; height:160px; margin-top:8px; }
+.eq span{ flex:1; background:linear-gradient(to top, var(--ember), var(--amber)); border-radius:3px; opacity:0.92; animation:bar 1.4s var(--ease) infinite alternate; }
+@keyframes bar{ from{ height:12%; } to{ height:96%; } }
+.eq-foot{ display:flex; justify-content:space-between; margin-top:20px; align-items:center; }
+.eq-foot .lbl{ font-family:var(--font-mono); font-size:0.72rem; color:var(--ink-dim); }
+.loopbar{ height:6px; border-radius:6px; background:var(--surface-2); position:relative; margin-top:14px; overflow:hidden; }
+.loopbar i{ position:absolute; top:0; bottom:0; left:24%; width:34%; background:linear-gradient(90deg,var(--mint),oklch(0.86 0.12 178 / 0.5)); border-radius:6px; animation:loop 3.2s var(--ease) infinite; }
+@keyframes loop{ 0%{ left:24%; } 50%{ left:42%; } 100%{ left:24%; } }
+
+/* ============================================================
+   Marquee strip
+   ============================================================ */
+.strip{ border-block:1px solid var(--line-soft); overflow:hidden; padding:18px 0; background:oklch(0.18 0.013 63 / 0.5); }
+.marquee{ display:flex; gap:46px; white-space:nowrap; width:max-content; animation:scroll 30s linear infinite; }
+.marquee span{ font-family:var(--font-display); font-style:italic; font-size:1.5rem; color:var(--ink-dim); display:inline-flex; align-items:center; gap:46px; }
+.marquee span::after{ content:"◆"; color:var(--amber); font-style:normal; font-size:0.7rem; }
+@keyframes scroll{ to{ transform:translateX(-50%); } }
+
+/* ============================================================
+   Generic section
+   ============================================================ */
+section{ padding:clamp(70px,10vh,130px) 0; }
+.feature{ }
+.feature .head{ max-width:64ch; margin-bottom:clamp(36px,5vw,64px); }
+.feature .head .lede{ margin-top:20px; }
+.idx{ font-family:var(--font-mono); font-size:0.74rem; color:var(--ember); letter-spacing:0.12em; }
+
+/* split layouts (alternating) */
+.split{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(34px,5vw,70px); align-items:center; }
+.split.reverse .copy{ order:2; }
+@media(max-width:900px){ .split{ grid-template-columns:1fr; } .split.reverse .copy{ order:0; } }
+
+.copy h2{ font-size:clamp(1.8rem,3.6vw,2.9rem); margin-bottom:18px; }
+.copy .lede{ margin-bottom:26px; }
+
+/* feature bullet list */
+.bullets{ list-style:none; display:flex; flex-direction:column; gap:14px; margin-top:8px; }
+.bullets li{ display:flex; gap:13px; align-items:flex-start; font-size:0.98rem; color:var(--ink-dim); line-height:1.45; }
+.bullets li::before{
+  content:""; flex:none; width:18px; height:18px; margin-top:3px; border-radius:5px;
+  background:
+    linear-gradient(135deg, var(--amber), var(--ember));
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 13l4 4L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 13l4 4L19 7' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.bullets li b{ color:var(--ink); font-weight:600; }
+
+.inline-note{ margin-top:22px; }
+
+/* ============================================================
+   Screenshot frame - browser chrome mockup
+   The address bar literally reads localhost:5000 to drive
+   home the "runs on your own machine" message.
+   ============================================================ */
+.frame{
+  border:1px solid var(--line); border-radius:14px; overflow:hidden;
+  background:var(--surface);
+  box-shadow:0 40px 100px -50px oklch(0 0 0 / 0.85), 0 4px 20px oklch(0 0 0 / 0.3);
+  transition:transform .5s var(--ease), box-shadow .5s var(--ease);
+}
+.frame:hover{ transform:translateY(-5px); box-shadow:0 56px 120px -50px oklch(0 0 0 / 0.9); }
+.frame .bar{
+  display:flex; align-items:center; gap:14px; padding:11px 14px;
+  background:var(--bg-2); border-bottom:1px solid var(--line-soft);
+}
+.frame .dots{ display:flex; gap:7px; }
+.frame .dots i{ width:11px; height:11px; border-radius:50%; display:block; }
+.frame .dots i:nth-child(1){ background:var(--ember); }
+.frame .dots i:nth-child(2){ background:var(--amber); }
+.frame .dots i:nth-child(3){ background:var(--mint); }
+.frame .addr{
+  flex:1; display:flex; align-items:center; gap:8px;
+  font-family:var(--font-mono); font-size:0.74rem; color:var(--ink-dim);
+  background:var(--bg); border:1px solid var(--line-soft); border-radius:8px;
+  padding:5px 12px; min-width:0;
+}
+.frame .addr .lock{ color:var(--mint); flex:none; }
+.frame .addr .host{ color:var(--ink); }
+.frame .addr .tail{ color:var(--ink-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.frame .addr .badge-mini{ margin-left:auto; font-size:0.62rem; color:var(--mint); letter-spacing:0.08em; flex:none; }
+
+/* the actual screenshot placeholder */
+.shot{ position:relative; aspect-ratio:16/10; background:linear-gradient(150deg,var(--bg-2),var(--surface)); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:30px; }
+.shot img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+/* placeholder content shows when image missing/transparent, sits behind img */
+.shot .ph{ position:relative; z-index:0; max-width:80%; }
+.shot .ph .filename{
+  font-family:var(--font-mono); font-size:0.82rem; font-weight:600; color:var(--amber);
+  background:oklch(0.82 0.15 78 / 0.1); border:1px dashed oklch(0.82 0.15 78 / 0.5);
+  padding:7px 14px; border-radius:8px; display:inline-block; margin-bottom:16px;
+}
+.shot .ph .desc{ font-size:0.9rem; color:var(--ink-dim); line-height:1.5; }
+.shot .ph .icon{ font-size:2.2rem; margin-bottom:10px; opacity:0.5; }
+
+.frame.tall .shot{ aspect-ratio:4/5; }
+.frame.wide .shot{ aspect-ratio:16/9; }
+
+.shot-cap{ font-family:var(--font-mono); font-size:0.72rem; color:var(--ink-faint); margin-top:14px; letter-spacing:0.03em; display:flex; align-items:center; gap:8px; }
+.shot-cap::before{ content:"▸"; color:var(--ember); }
+
+/* ============================================================
+   Feature card grid (for clustered features)
+   ============================================================ */
+.cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; margin-top:30px; }
+.card{
+  border:1px solid var(--line-soft); border-radius:var(--r); padding:26px 24px;
+  background:linear-gradient(165deg, oklch(0.21 0.014 64), oklch(0.175 0.012 64));
+  transition:border-color .3s, transform .3s var(--ease);
+}
+.card:hover{ border-color:var(--line); transform:translateY(-4px); }
+.card .ic{ font-size:1.5rem; margin-bottom:14px; display:block; }
+.card h3{ font-size:1.25rem; margin-bottom:8px; font-weight:600; }
+.card p{ font-size:0.92rem; color:var(--ink-dim); line-height:1.5; }
+.card .kbd{ font-family:var(--font-mono); font-size:0.72rem; color:var(--amber); margin-top:12px; display:inline-block; border:1px solid var(--line); border-radius:6px; padding:3px 8px; }
+
+/* ============================================================
+   Privacy section - the manifesto
+   ============================================================ */
+.privacy{ background:
+    radial-gradient(80% 120% at 50% 0%, oklch(0.86 0.12 178 / 0.07), transparent 55%);
+  border-block:1px solid var(--line-soft);
+}
+.privacy .big{ font-size:clamp(2.2rem,5.5vw,4.4rem); font-weight:400; max-width:18ch; line-height:1.04; }
+.privacy .big em{ font-style:italic; color:var(--mint); }
+.privacy-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1px; margin-top:54px; background:var(--line-soft); border:1px solid var(--line-soft); border-radius:var(--r); overflow:hidden; }
+.pv{ background:var(--bg); padding:30px 26px; }
+.pv .n{ font-family:var(--font-mono); font-size:0.7rem; color:var(--mint); letter-spacing:0.1em; }
+.pv h3{ font-size:1.3rem; margin:12px 0 8px; font-weight:600; }
+.pv p{ font-size:0.92rem; color:var(--ink-dim); line-height:1.5; }
+
+/* compare table */
+.compare{ margin-top:54px; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; }
+.compare .row{ display:grid; grid-template-columns:1.4fr 1fr 1fr; }
+.compare .row > div{ padding:16px 22px; border-bottom:1px solid var(--line-soft); font-size:0.92rem; display:flex; align-items:center; gap:8px; }
+.compare .row:last-child > div{ border-bottom:none; }
+.compare .head-row > div{ font-family:var(--font-mono); font-size:0.72rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-faint); background:var(--bg-2); }
+.compare .head-row .you{ color:var(--mint); }
+.compare .feat{ color:var(--ink); }
+.compare .yes{ color:var(--mint); }
+.compare .no{ color:var(--ink-faint); }
+.compare .row > div:first-child{ border-right:1px solid var(--line-soft); }
+.compare .row > div:nth-child(2){ border-right:1px solid var(--line-soft); }
+@media(max-width:640px){ .compare .row{ grid-template-columns:1.4fr 0.7fr 0.7fr; } .compare .row > div{ padding:12px 14px; font-size:0.82rem; } }
+
+/* ============================================================
+   Tech section
+   ============================================================ */
+.tech{ }
+.tech-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:18px; margin-top:40px; }
+.chip{ border:1px solid var(--line-soft); border-radius:14px; padding:22px; background:var(--bg-2); }
+.chip .t{ font-family:var(--font-mono); font-size:0.72rem; color:var(--amber); letter-spacing:0.06em; }
+.chip h4{ font-family:var(--font-display); font-size:1.2rem; font-weight:600; margin:10px 0 6px; }
+.chip p{ font-size:0.86rem; color:var(--ink-dim); line-height:1.45; }
+
+/* ============================================================
+   Footer / CTA
+   ============================================================ */
+footer{ border-top:1px solid var(--line-soft); padding:clamp(70px,10vh,120px) 0 60px; }
+.cta{ text-align:center; max-width:760px; margin-inline:auto; }
+.cta h2{ font-size:clamp(2.2rem,6vw,4.2rem); margin-bottom:22px; }
+.cta .lede{ margin-inline:auto; margin-bottom:36px; }
+.foot-logo{ width:64px; height:64px; object-fit:contain; margin:0 auto 22px; display:block; filter:drop-shadow(0 6px 24px oklch(0.82 0.15 78 / 0.3)); }
+
+/* link buttons row (website / github / coffee) */
+.links-row{ display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin-top:30px; }
+.link-btn{
+  display:inline-flex; align-items:center; gap:0.6em;
+  font-family:var(--font-mono); font-size:0.8rem; font-weight:500; letter-spacing:0.01em;
+  padding:0.8em 1.3em; border-radius:999px; border:1px solid var(--line);
+  color:var(--ink); background:var(--bg-2);
+  transition:transform .25s var(--ease), border-color .25s, color .25s, background .25s, box-shadow .25s;
+}
+.link-btn svg{ width:18px; height:18px; }
+.link-btn:hover{ transform:translateY(-3px); border-color:var(--amber); }
+.link-btn.web:hover{ color:var(--mint); border-color:oklch(0.86 0.12 178 / 0.6); box-shadow:0 12px 30px -14px oklch(0.86 0.12 178 / 0.5); }
+.link-btn.gh:hover{ color:var(--ink); box-shadow:0 12px 30px -14px oklch(0 0 0 / 0.6); }
+.link-btn.coffee{ background:var(--amber); color:oklch(0.18 0.02 64); border-color:var(--amber); font-weight:600; }
+.link-btn.coffee:hover{ color:oklch(0.18 0.02 64); box-shadow:0 14px 36px -12px oklch(0.82 0.15 78 / 0.6); }
+
+.foot-bottom{ display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap; margin-top:80px; padding-top:30px; border-top:1px solid var(--line-soft); font-family:var(--font-mono); font-size:0.74rem; color:var(--ink-faint); }
+.foot-bottom .l{ display:flex; gap:22px; flex-wrap:wrap; }
+
+/* code line */
+.codeline{ font-family:var(--font-mono); font-size:0.86rem; background:var(--bg-2); border:1px solid var(--line); border-radius:10px; padding:14px 18px; color:var(--mint); display:inline-flex; align-items:center; gap:10px; }
+.codeline .c{ color:var(--ink-faint); }
+.codeline .p{ color:var(--ember); }
+
+/* ============================================================
+   Maker's note - a signed, first-person pull quote
+   ============================================================ */
+.maker{ padding-top:0; }
+.makers-note{
+  position:relative;
+  border:1px solid var(--line-soft);
+  border-radius:var(--r);
+  background:
+    radial-gradient(130% 150% at 0% 0%, oklch(0.82 0.15 78 / 0.09), transparent 55%),
+    linear-gradient(165deg, var(--bg-2), var(--bg));
+  padding:clamp(36px,5vw,64px) clamp(30px,5vw,72px);
+  overflow:hidden;
+}
+.makers-note::before{
+  content:"\201C";
+  position:absolute; top:-0.12em; left:0.1em;
+  font-family:var(--font-display); font-style:italic;
+  font-size:clamp(9rem,17vw,15rem); line-height:1;
+  color:oklch(0.82 0.15 78 / 0.13); pointer-events:none; z-index:0;
+}
+.makers-note .mn-body{ position:relative; z-index:1; max-width:46ch; }
+.makers-note p{
+  font-family:var(--font-display); font-weight:400; font-style:italic;
+  font-size:clamp(1.25rem,2.5vw,1.95rem); line-height:1.36;
+  letter-spacing:-0.015em; color:var(--ink);
+}
+.makers-note p + p{ margin-top:0.65em; }
+.makers-note p em{ color:var(--amber); font-style:italic; }
+.makers-note .sign{ display:flex; align-items:center; gap:15px; margin-top:34px; }
+.makers-note .sign img{ width:44px; height:44px; object-fit:contain; filter:drop-shadow(0 4px 16px oklch(0.82 0.15 78 / 0.3)); }
+.makers-note .sign .who b{ font-family:var(--font-display); font-size:1.1rem; font-weight:600; display:block; line-height:1.1; }
+.makers-note .sign .who span{ font-family:var(--font-mono); font-size:0.72rem; letter-spacing:0.07em; color:var(--ink-faint); text-transform:uppercase; }
+
+/* ============================================================
+   Scroll reveal
+   ============================================================ */
+.reveal{ opacity:0; transform:translateY(28px); transition:opacity .8s var(--ease), transform .8s var(--ease); }
+.reveal.in{ opacity:1; transform:none; }
+.reveal.d1{ transition-delay:.08s; }
+.reveal.d2{ transition-delay:.16s; }
+.reveal.d3{ transition-delay:.24s; }
+@media(prefers-reduced-motion:reduce){
+  .reveal{ opacity:1; transform:none; }
+  *{ animation:none !important; }
+  html{ scroll-behavior:auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================ NAV ============================ -->
+<nav class="topnav" id="topnav">
+  <a class="brand" href="#top">
+    <img class="brand-logo" src="images/logo-mark.png" alt="Loopretto logo" />
+    Loopretto
+  </a>
+  <div class="navlinks">
+    <a href="#byear">By ear</a>
+    <a href="#loop">Loop</a>
+    <a href="#sound">Sound</a>
+    <a href="#practice">Practice</a>
+    <a href="#privacy">Privacy</a>
+    <a class="icon-link" href="https://github.com/cristiangabriel88/loopretto" target="_blank" rel="noopener" aria-label="Loopretto on GitHub" title="View on GitHub">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.05.78 2.12v3.14c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5Z"/></svg>
+    </a>
+    <span class="local-badge"><span class="dot"></span>100% local</span>
+  </div>
+</nav>
+
+<main id="top">
+
+<!-- ============================ HERO ============================ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="copy reveal in">
+        <div class="hero-kicker">
+          <span class="tag">Transcribe music by ear</span>
+          <span class="local-badge"><span class="dot"></span>No cloud · No login</span>
+          <span class="local-badge amber"><span class="dot"></span>Free &amp; open source</span>
+        </div>
+        <h1 class="display">Loop<span class="retto" style="color:var(--amber)">retto</span><span class="serif-accent" style="display:block;font-size:0.34em;color:var(--ink-dim);margin-top:0.4em;letter-spacing:-0.01em;">slow it down. <em class="it">get it down.</em></span></h1>
+        <p class="lede hero-sub">The transcription room <b style="color:var(--ink)">for musicians who learn by ear.</b> That difficult part in the song you can't quite catch? Loop it, slow it down without the chipmunk, drop it into your key, and isolate the instrument until your ear hears every note, then <b style="color:var(--ink)">get it down.</b> A complete by-ear workbench that lives <b style="color:var(--ink)">entirely on your machine.</b></p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#loop">See every feature ↓</a>
+          <a class="btn ghost" href="#privacy">Why local-only?</a>
+        </div>
+        <div class="hero-meta">
+          <div class="m"><b>$0</b><span>free &amp; open source</span></div>
+          <div class="m"><b>0</b><span>bytes uploaded</span></div>
+          <div class="m"><b>∞</b><span>loops, your call</span></div>
+        </div>
+      </div>
+
+      <div class="reveal in d2">
+        <div class="eq-card">
+          <span class="corner">LOCALHOST · LIVE</span>
+          <div class="eq" id="eq"></div>
+          <div class="eq-foot">
+            <span class="lbl">A·minor · 84 bpm · −3 st</span>
+            <span class="local-badge amber"><span class="dot"></span>on device</span>
+          </div>
+          <div class="loopbar"><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============================ MARQUEE ============================ -->
+<div class="strip" aria-hidden="true">
+  <div class="marquee" id="marquee">
+    <span>transcribe by ear</span><span>loop that difficult part</span><span>slow it down</span><span>get it down</span><span>hear every note</span><span>isolate the instrument</span><span>change the key</span><span>check the pitch</span>
+  </div>
+</div>
+
+<!-- ============================ TRANSCRIBE BY EAR ============================ -->
+<section id="byear" class="feature">
+  <div class="wrap">
+    <div class="head reveal" style="max-width:none;">
+      <span class="idx">00 · The whole idea</span>
+      <h2 class="section-h" style="max-width:20ch;">Built for one thing: <span class="serif-accent" style="color:var(--amber);">transcribing music by ear.</span></h2>
+      <p class="lede" style="margin-top:20px;">As a musician, I know the feeling: there's <b style="color:var(--ink)">that difficult part in the song</b>, a lick or a line that flies by too fast to catch. Loopretto exists to crack it open. Loop the phrase, slow it down until each note rings clear, lean on the pitch tools when your ear needs a second opinion, and <b style="color:var(--ink)">get it down.</b></p>
+    </div>
+    <div class="cards reveal d1" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr));">
+      <div class="card">
+        <span class="ic">①</span>
+        <h3>Loop the part</h3>
+        <p>Frame the difficult bars on the waveform so they repeat, seamlessly, while your ear works.</p>
+      </div>
+      <div class="card">
+        <span class="ic">②</span>
+        <h3>Slow it down</h3>
+        <p>Pull the tempo back with the pitch intact, and fast runs become slow enough to hear note by note.</p>
+      </div>
+      <div class="card">
+        <span class="ic">③</span>
+        <h3>Hear every note</h3>
+        <p>Isolate the instrument, sweep the EQ, and let live note detection confirm what your ear suspects.</p>
+      </div>
+      <div class="card">
+        <span class="ic">④</span>
+        <h3>Get it down</h3>
+        <p>Check it against the piano, fretboard or drone, then play it back yourself, over and over.</p>
+      </div>
+    </div>
+    <div class="inline-note reveal d2"><span class="local-badge"><span class="dot"></span>Transcribe by ear, privately, on your own machine</span></div>
+  </div>
+</section>
+
+<!-- ============================ MAKER'S NOTE ============================ -->
+<section id="maker" class="maker">
+  <div class="wrap">
+    <div class="makers-note reveal">
+      <div class="mn-body">
+        <p><b style="color:var(--ink)">As a musician,</b> I built the tool I always wished I had.</p>
+        <p>For years I picked songs apart by ear with a clumsy pile of half-working players, a tuner app and a notebook. I understand the work because <em>I do it myself</em>, so I built Loopretto as one quiet room where I can loop the part, slow it down, find the pitch and finally get it down.</p>
+        <p>I use it every day. If it helps you hear something you couldn't catch before, <em>that's the whole point.</em></p>
+      </div>
+      <div class="sign">
+        <img src="images/logo-mark.png" alt="" aria-hidden="true" />
+        <div class="who">
+          <b>Cristian Gabriel</b>
+          <span>Musician &amp; developer · maker of Loopretto</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SOURCES ============================ -->
+<section id="sources" class="feature">
+  <div class="wrap">
+    <div class="split">
+      <div class="copy reveal">
+        <span class="idx">01 · Get a track in</span>
+        <h2>Paste a link, or just drop the file.</h2>
+        <p class="lede">Paste a YouTube link and Loopretto fetches the audio for you anonymously, with no login and no cookies. SoundCloud, Bandcamp, Vimeo and direct audio URLs work too. Already have the file? Drag it straight onto the window and it never touches a server at all. And once a track is loaded, one click <b style="color:var(--ink)">downloads the MP3</b> to your own machine, so you can keep the audio for offline practice.</p>
+        <ul class="bullets">
+          <li><b>Allowlisted sources:</b> YouTube, SoundCloud, Bandcamp, Vimeo + their subdomains, or any direct audio-file URL.</li>
+          <li><b>Anonymous downloads</b>: no account, no cookies, nothing to sign into.</li>
+          <li><b>Download the MP3</b>: save the fetched audio to your computer, keeping the track's real title.</li>
+          <li><b>Drag-and-drop local files</b> play instantly via an in-browser object URL, with zero round-trip to any server.</li>
+          <li>Leading section + size caps keep fetches quick and lean.</li>
+        </ul>
+        <div class="inline-note"><span class="local-badge"><span class="dot"></span>A dropped file never leaves the browser tab</span></div>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="tail">/</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-01.png" alt="Loopretto loading screen: a URL paste field with a drag-and-drop file zone, ready to fetch a track." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🎧</div>
+              <div class="filename">images/screenshot-01.png</div>
+              <div class="desc">The landing/loading view: the URL paste field, the "drop a file here" zone, and saved setlists ready to click into.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-01.png</strong>: the source-input / loading screen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ THE LOOP ============================ -->
+<section id="loop" class="feature">
+  <div class="wrap">
+    <div class="split reverse">
+      <div class="copy reveal">
+        <span class="idx">02 · The loop</span>
+        <h2>Click the waveform. <span class="serif-accent" style="color:var(--amber);">That's your loop.</span></h2>
+        <p class="lede">The first move in any transcription. A crisp WaveSurfer waveform fills the screen. Click anywhere to set your start point, hit <b>Loop</b>, and a region appears. Drag its edges to frame exactly <b style="color:var(--ink)">that difficult part</b> you're trying to catch, and it repeats seamlessly, forever, while your ear chips away at it note by note.</p>
+        <ul class="bullets">
+          <li><b>Click-to-set</b> start point, then a draggable, resizable loop region.</li>
+          <li><b>Seamless repeat</b> that jumps back the instant the region ends.</li>
+          <li><b>Rep counter</b>: a <code>× N</code> badge ticks up every time the loop comes around.</li>
+          <li><b>Wheel-zoom</b> into the waveform for sample-tight loop points; <kbd>←/→</kbd> nudge by half a second.</li>
+          <li><b>Streamed playback</b> via HTTP range requests, so the track starts instantly, with no full download wait.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame wide">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="tail">/audio/audio.webm</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-02.png" alt="The main player: a full-width waveform with a highlighted loop region, drag handles, and a reps badge." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">〰️</div>
+              <div class="filename">images/screenshot-02.png</div>
+              <div class="desc">The main player with the waveform, an active highlighted loop region with drag handles, the loop tag and its <code>× N</code> rep badge, and the transport controls.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-02.png</strong>: waveform with an active loop region.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SPEED & KEY ============================ -->
+<section id="speed" class="feature">
+  <div class="wrap">
+    <div class="split">
+      <div class="copy reveal">
+        <span class="idx">03 · Tempo & pitch, decoupled</span>
+        <h2><span class="serif-accent" style="color:var(--amber);">Slow it down</span> to get it down.</h2>
+        <p class="lede">The transcriber's secret weapon. Pull the <b>speed</b> back to 50% and a blistering run unspools slow enough to hear every note; pitch stays put, no chipmunk, no warble. Tap <b>Key −/+</b> to transpose up to a full octave while the tempo never moves, so you can match the part to your own instrument with one click.</p>
+        <ul class="bullets">
+          <li><b>Speed</b> control preserves pitch: slow practice that still sounds musical.</li>
+          <li><b>Transpose −12…+12 semitones</b> with the Key buttons; tempo unchanged.</li>
+          <li>A live-stream pitch shifter that's <b>cleanly bypassed at 0 semitones</b> for untouched audio.</li>
+          <li>Both work on the streaming player: no re-decode, no waiting.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-03.png" alt="Speed slider and Key transpose minus/plus controls in the player toolbar." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🐢</div>
+              <div class="filename">images/screenshot-03.png</div>
+              <div class="desc">The speed slider (e.g. 0.7×) alongside the Key −/+ transpose control showing a semitone offset like −3.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-03.png</strong>: speed slider + Key transpose controls.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CHANNEL / KARAOKE ============================ -->
+<section id="channels" class="feature">
+  <div class="wrap">
+    <div class="split reverse">
+      <div class="copy reveal">
+        <span class="idx">04 · Channel isolation</span>
+        <h2>Isolate the instrument you're transcribing.</h2>
+        <p class="lede">When the part you want is buried in the mix, a four-way switch reroutes the stereo field in real time. Solo the left or right channel to <b style="color:var(--ink)">lift a panned instrument out</b> so your ear can lock onto it, or flip to <b>Karaoke</b>, which plays the left-minus-right difference to cancel center-panned vocals and expose the backing underneath.</p>
+        <ul class="bullets">
+          <li><b>Stereo · L · R · Karaoke</b>: one segmented control, instant switching.</li>
+          <li><b>Karaoke mode</b> plays the mid-side difference to drop center vocals.</li>
+          <li>Resets to clean Stereo on every new track automatically.</li>
+          <li>Built on a live Web Audio splitter/merger graph: no file processing.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-04.png" alt="The Audio segmented control showing Stereo, Left, Right and Karaoke options." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🎚️</div>
+              <div class="filename">images/screenshot-04.png</div>
+              <div class="desc">The "Audio" segmented control with Stereo / L / R / Karaoke, with Karaoke selected.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-04.png</strong>: Stereo / L / R / Karaoke switch.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SOUND FX ============================ -->
+<section id="sound" class="feature">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="idx">05 · Sound shaping</span>
+      <h2 class="section-h">Three studio effects, on tap.</h2>
+      <p class="lede">Open the Sound panel and sculpt the tone before it reaches your ears. Each effect lives in the audio chain only while it's switched on, with sliders that move the sound live.</p>
+    </div>
+    <div class="split">
+      <div class="reveal">
+        <figure class="frame wide">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-05.png" alt="The Sound FX panel: 5-band parametric EQ, band-pass spotlight, and a punch compressor." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🎛️</div>
+              <div class="filename">images/screenshot-05.png</div>
+              <div class="desc">The open Sound panel showing the 5-band EQ presets, the band-pass spotlight Freq/Width sliders, and the Punch compressor toggle.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-05.png</strong>: the Sound FX panel.</p>
+      </div>
+      <div class="copy reveal d1">
+        <div class="cards" style="grid-template-columns:1fr;">
+          <div class="card">
+            <span class="ic">📊</span>
+            <h3>Parametric EQ</h3>
+            <p>A 5-band filter chain (80 Hz · 250 · 1k · 3.5k · 12k) with ready-made presets: boost the low end, scoop the mud, or bypass it entirely.</p>
+          </div>
+          <div class="card">
+            <span class="ic">🔦</span>
+            <h3>Band-pass spotlight</h3>
+            <p>A single sweepable band-pass with log-mapped Freq and Width sliders to narrow in on one frequency band and isolate a riff hiding in the mix.</p>
+          </div>
+          <div class="card">
+            <span class="ic">🥊</span>
+            <h3>Punch</h3>
+            <p>A compressor plus make-up gain to even out dynamics and push a quiet part forward so every note reads clearly.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ NOTE DETECTION ============================ -->
+<section id="notes" class="feature">
+  <div class="wrap">
+    <div class="split reverse">
+      <div class="copy reveal">
+        <span class="idx">06 · Live note detection</span>
+        <h2>A second opinion for your ear.</h2>
+        <p class="lede">Stuck on a note you can't quite name? Flip on the Notes overlay and Loopretto listens to the playing audio, runs autocorrelation pitch detection, and shows the note in real time (name plus how many cents sharp or flat), with a rolling strip of the recently detected pitches. The fastest way to <b style="color:var(--ink)">confirm what you're hearing</b> and get that difficult part down on paper.</p>
+        <ul class="bullets">
+          <li><b>Live note pill</b>: note name + cents deviation, updated every animation frame.</li>
+          <li><b>Rolling history strip</b> of recently detected, stable pitches.</li>
+          <li>Reads the analyser tap on the master output, so it works with speed/key changes applied.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-06.png" alt="The live note detection overlay showing a detected note name with cents and a history strip." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🎵</div>
+              <div class="filename">images/screenshot-06.png</div>
+              <div class="desc">The Notes overlay: a big live note pill (e.g. "A4 +6¢") with the rolling strip of recently detected notes beneath it.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-06.png</strong>: the live note overlay.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ METRONOME ============================ -->
+<section id="metronome" class="feature">
+  <div class="wrap">
+    <div class="split">
+      <div class="copy reveal">
+        <span class="idx">07 · Metronome</span>
+        <h2>A click that actually stays in time.</h2>
+        <p class="lede">A look-ahead scheduler keeps the click rock-solid. Tap the tempo in, dial beats-per-bar, and watch the beat dots pulse. Set beats-per-bar to 1 for a plain unaccented pulse, or higher to put an accent on the downbeat.</p>
+        <ul class="bullets">
+          <li><b>Tap tempo</b>: set BPM by feel, or nudge it with ±.</li>
+          <li><b>Accented downbeat</b> with adjustable beats-per-bar (1 = no accent).</li>
+          <li><b>Visual beat dots</b> light in sync with the audible click.</li>
+          <li>Routes straight to output, so it's unaffected by your speed, key, or FX settings, and you can swap the click sample by dropping in your own WAV.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-07.png" alt="The metronome panel with Start/Stop, BPM controls, tap tempo, beats-per-bar and beat dots." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">⏱️</div>
+              <div class="filename">images/screenshot-07.png</div>
+              <div class="desc">The Metronome panel: Start/Stop, BPM ±, a Tap button, beats-per-bar selector, and the row of visual beat dots.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-07.png</strong>: the metronome panel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ DRONE ============================ -->
+<section id="drone" class="feature">
+  <div class="wrap">
+    <div class="split reverse">
+      <div class="copy reveal">
+        <span class="idx">08 · Drone</span>
+        <h2>A reference pitch to check your ear against.</h2>
+        <p class="lede">Working out a key centre or testing intonation while you transcribe? The Drone panel sustains up to three sine voices (pick a note and octave, optionally add the octave below) through a gentle lowpass and its own volume control. Hold a tonic underneath the track and the notes you're chasing snap into context. It bypasses the master output, so transpose and the memorize fade never touch your reference tone.</p>
+        <ul class="bullets">
+          <li><b>Up to three sustained voices</b>: note + octave, with an optional octave-below.</li>
+          <li>Its own lowpass filter and volume, independent of the track.</li>
+          <li><b>Bypasses master gain</b>: stays steady through transpose and memorize mode.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-08.png" alt="The drone panel with note/octave selectors, octave-below toggle and a volume slider." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🌊</div>
+              <div class="filename">images/screenshot-08.png</div>
+              <div class="desc">The Drone panel: note + octave pickers, the octave-below toggle, and the volume slider, with a drone active.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-08.png</strong>: the drone panel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ FRETBOARD ============================ -->
+<section id="fretboard" class="feature">
+  <div class="wrap">
+    <div class="split">
+      <div class="copy reveal">
+        <span class="idx">09 · Fretboard</span>
+        <h2>Find the note on the neck.</h2>
+        <p class="lede">Heard the pitch but not sure where it lives on the fretboard? A full neck is rendered right in the page, thickest string on the bottom, just like you're looking down at the instrument. Click any position to hear it from real recorded samples, match it to the track, and every spot sharing that pitch class lights up, so transcribing by ear turns straight into a fingering.</p>
+        <ul class="bullets">
+          <li><b>Guitar / Bass</b> switch, plus a Labels toggle, both remembered between visits.</li>
+          <li><b>Click to play</b> from real recorded samples, pitch-shifted to the nearest anchor (with a synth fallback).</li>
+          <li><b>Pitch-class highlighting</b>: every matching position on the neck lights up.</li>
+          <li>Routes straight to output, like the metronome and drone.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame wide">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-09.png" alt="The interactive fretboard panel showing a guitar neck with highlighted pitch-class positions." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🎸</div>
+              <div class="filename">images/screenshot-09.png</div>
+              <div class="desc">The Fretboard panel: a guitar (or bass) neck with fret numbers, inlay dots, note labels, and one pitch class lit up across the strings.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-09.png</strong>: the interactive fretboard.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PIANO ============================ -->
+<section id="piano" class="feature">
+  <div class="wrap">
+    <div class="split reverse">
+      <div class="copy reveal">
+        <span class="idx">10 · Reference piano</span>
+        <h2>Sing it, then find it on the keys.</h2>
+        <p class="lede">A reference piano sits right in the player, voiced with real recorded samples. Click the keys or use the keyboard (<kbd>z x c v b n m</kbd> for the white keys and <kbd>s d g h j</kbd> for the black) to <b style="color:var(--ink)">check a pitch against the track</b> and pin down exactly which note you're hearing, without ever leaving the page.</p>
+        <ul class="bullets">
+          <li><b>Real mp3 piano samples</b> across a chromatic octave.</li>
+          <li><b>Keyboard-mapped</b>: white keys on <kbd>z x c v b n m</kbd>, sharps on <kbd>s d g h j</kbd>.</li>
+          <li>Always available alongside the waveform for quick pitch checks.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-10.png" alt="The reference piano keyboard with white and black keys labelled with their keyboard shortcuts." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🎹</div>
+              <div class="filename">images/screenshot-10.png</div>
+              <div class="desc">The reference piano: a chromatic octave of keys, white keys labelled with their keyboard-shortcut letters.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-10.png</strong>: the reference piano.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PRACTICE ============================ -->
+<section id="practice" class="feature">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="idx">11 · Practice tools</span>
+      <h2 class="section-h">It keeps score, so you can just play.</h2>
+      <p class="lede">Loopretto isn't only a player; it's a practice log. Everything below is keyed to the current song and saved locally in your browser, building a quiet record of the work you put in.</p>
+    </div>
+
+    <div class="split" style="margin-bottom:clamp(40px,6vw,80px);">
+      <div class="reveal">
+        <figure class="frame tall">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-11.png" alt="The practice panel with a session stopwatch, notes field, and a per-song journal." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">📓</div>
+              <div class="filename">images/screenshot-11.png</div>
+              <div class="desc">The Practice panel: the session stopwatch (Start/Stop/New), a notes field, and the journal listing per-song totals and recent sessions.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-11.png</strong>: practice session + journal.</p>
+      </div>
+      <div class="copy reveal d1">
+        <h3 style="font-family:var(--font-display);font-size:1.6rem;font-weight:600;margin-bottom:14px;">Session stopwatch &amp; journal</h3>
+        <p class="lede" style="font-size:1.05rem;">A manual wall-clock stopwatch you start and stop; it counts whether the track is playing or paused, so working a part out on the instrument still counts. Stop a session and it's logged with the time, your reps, optional notes, and any pomodoros, then rolled into a per-song journal.</p>
+        <ul class="bullets">
+          <li><b>Wall-clock timer</b>, not a playback clock: credits real practice time.</li>
+          <li><b>Journaled sessions</b> with notes, reps and pomodoro counts per song.</li>
+          <li>Survives changing tracks, and banks your time even if you just close the tab.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="cards reveal">
+      <div class="card">
+        <span class="ic">🎯</span>
+        <h3>Daily goal &amp; streak</h3>
+        <p>Set a daily target (30 min by default) and watch a progress bar fill against today's total. A streak counter tallies consecutive days you've put in the work.</p>
+      </div>
+      <div class="card">
+        <span class="ic">🍅</span>
+        <h3>Pomodoro</h3>
+        <p>An independent focus/break countdown (25/5 by default). Each phase change chimes a soft ping and pops a toast: no asset, no notification permission needed.</p>
+      </div>
+      <div class="card">
+        <span class="ic">🔁</span>
+        <h3>Loop reps</h3>
+        <p>Every time your loop comes back around, the rep counter ticks up: a running tally of how many times you've drilled this exact phrase today.</p>
+      </div>
+      <div class="card">
+        <span class="ic">🧠</span>
+        <h3>Memorize mode</h3>
+        <p>Each loop pass quietly steps the track volume down a few dB until it fades to silence, then back up, weaning you off the recording so your memory takes over.</p>
+      </div>
+    </div>
+
+    <div class="split" style="margin-top:clamp(40px,6vw,80px);">
+      <div class="copy reveal">
+        <h3 style="font-family:var(--font-display);font-size:1.6rem;font-weight:600;margin-bottom:14px;">Goals, streaks &amp; focus, at a glance</h3>
+        <p class="lede" style="font-size:1.05rem;">The daily goal bar, the streak count and the pomodoro timer all live together: a small dashboard that makes consistency visible without nagging you. Everything is stored in <code>localStorage</code>, on your machine, under your control.</p>
+        <div class="inline-note"><span class="local-badge"><span class="dot"></span>Your practice log never leaves your browser</span></div>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-12.png" alt="Daily goal progress bar, streak counter and pomodoro timer in the practice panel." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">🔥</div>
+              <div class="filename">images/screenshot-12.png</div>
+              <div class="desc">The daily-goal progress bar against today's total, the streak counter, and the pomodoro focus/break timer mid-session.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-12.png</strong>: daily goal, streak &amp; pomodoro.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SETLISTS & RESTORE ============================ -->
+<section id="setlists" class="feature">
+  <div class="wrap">
+    <div class="split reverse">
+      <div class="copy reveal">
+        <span class="idx">12 · Setlists &amp; resume</span>
+        <h2>Pick up exactly where you left off.</h2>
+        <p class="lede">Group the songs you're working on into named setlists, shown on the loading screen; click one to load it instantly. And every few seconds Loopretto quietly remembers your last session, so a "Resume" banner offers to bring back the track, loop, speed, key and zoom right where you stopped. It never auto-downloads, so you stay in control of when a fetch happens.</p>
+        <ul class="bullets">
+          <li><b>Named setlists</b> of your URL-based songs, one click to load.</li>
+          <li><b>Resume banner</b> restores loop, speed, pitch and zoom from last time.</li>
+          <li><b>Opt-in re-fetch</b>: you click Resume; nothing downloads behind your back.</li>
+          <li>All stored locally in your browser: your library, your machine.</li>
+        </ul>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● ON DEVICE</span></div>
+          </div>
+          <div class="shot">
+            <img src="images/screenshot-13.png" alt="The loading view with saved setlists and a Resume last session banner." onerror="this.style.display='none'" />
+            <div class="ph">
+              <div class="icon">📋</div>
+              <div class="filename">images/screenshot-13.png</div>
+              <div class="desc">The loading view showing saved setlists with their songs, and the "Resume last session" banner offering to reload the previous track.</div>
+            </div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name your file <strong>screenshot-13.png</strong>: setlists + resume banner.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ THEMES ============================ -->
+<section id="themes" class="feature">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="idx">13 · Themes</span>
+      <h2 class="section-h">Three shades for any room.</h2>
+      <p class="lede">Cycle between Light, Dim and Dark from the menu; the choice is remembered, and even the waveform recolors itself to match. Dim is the cozy default for late-night sessions.</p>
+    </div>
+    <div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));">
+      <div class="reveal">
+        <figure class="frame">
+          <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">☀ LIGHT</span></div></div>
+          <div class="shot">
+            <img src="images/screenshot-14-light.png" alt="Loopretto in its light theme." onerror="this.style.display='none'" />
+            <div class="ph"><div class="icon">☀️</div><div class="filename">images/screenshot-14-light.png</div><div class="desc">The player in the Light theme.</div></div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name it <strong>screenshot-14-light.png</strong></p>
+      </div>
+      <div class="reveal d1">
+        <figure class="frame">
+          <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">◐ DIM</span></div></div>
+          <div class="shot">
+            <img src="images/screenshot-14-dim.png" alt="Loopretto in its default dim theme." onerror="this.style.display='none'" />
+            <div class="ph"><div class="icon">◐</div><div class="filename">images/screenshot-14-dim.png</div><div class="desc">The player in the default Dim theme.</div></div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name it <strong>screenshot-14-dim.png</strong></p>
+      </div>
+      <div class="reveal d2">
+        <figure class="frame">
+          <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="addr"><span class="lock">🔒</span><span class="host">localhost:5000</span><span class="badge-mini">● DARK</span></div></div>
+          <div class="shot">
+            <img src="images/screenshot-14-dark.png" alt="Loopretto in its dark theme." onerror="this.style.display='none'" />
+            <div class="ph"><div class="icon">🌙</div><div class="filename">images/screenshot-14-dark.png</div><div class="desc">The player in the Dark theme.</div></div>
+          </div>
+        </figure>
+        <p class="shot-cap">Name it <strong>screenshot-14-dark.png</strong></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PRIVACY MANIFESTO ============================ -->
+<section id="privacy" class="privacy">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="tag">The whole point</span>
+      <p class="big" style="margin-top:22px;">Your files. Your computer. <em>Your control.</em></p>
+      <p class="lede" style="margin-top:28px;max-width:62ch;">Loopretto is built to run on <b style="color:var(--ink)">localhost</b> and nowhere else. There's no account to create, no server to upload to, no analytics, no telemetry. The audio you load, the loops you set, the practice you log: none of it ever leaves the machine you're sitting at. This isn't a free tier that gets monetized later; it's <b style="color:var(--ink)">free and open source</b>, and <b style="color:var(--ink)">local-only is the design, permanently.</b></p>
+    </div>
+
+    <div class="privacy-grid reveal d1">
+      <div class="pv"><div class="n">01</div><h3>No login, ever</h3><p>No sign-up, no email, no password. Open it and play. Even downloads run anonymously: no account, no cookies.</p></div>
+      <div class="pv"><div class="n">02</div><h3>No cloud storage</h3><p>Nothing is uploaded. Tracks are fetched to your own disk; dropped files never leave the browser tab at all.</p></div>
+      <div class="pv"><div class="n">03</div><h3>No tracking</h3><p>No analytics, no telemetry, no third-party scripts phoning home. Your practice habits are yours alone.</p></div>
+      <div class="pv"><div class="n">04</div><h3>Works offline</h3><p>The waveform engine is vendored, not loaded from a CDN, so after the first track it keeps working with no internet.</p></div>
+      <div class="pv"><div class="n">05</div><h3>Local storage only</h3><p>Setlists, sessions, goals, streaks and themes all live in your browser's <code>localStorage</code>, on your machine.</p></div>
+      <div class="pv"><div class="n">06</div><h3>Free &amp; open source</h3><p>Free to use and the full source is on GitHub: read it, fork it, run it yourself. No subscription, no expiry, no "service" that can disappear from under you.</p></div>
+    </div>
+
+    <div class="compare reveal d2">
+      <div class="row head-row">
+        <div>What happens to your data</div>
+        <div>Typical cloud app</div>
+        <div class="you">Loopretto</div>
+      </div>
+      <div class="row"><div class="feat">Account required</div><div class="no">Yes</div><div class="yes">Never</div></div>
+      <div class="row"><div class="feat">Audio uploaded to a server</div><div class="no">Usually</div><div class="yes">Never</div></div>
+      <div class="row"><div class="feat">Practice data leaves your device</div><div class="no">Yes</div><div class="yes">Never</div></div>
+      <div class="row"><div class="feat">Works fully offline</div><div class="no">Rarely</div><div class="yes">Yes</div></div>
+      <div class="row"><div class="feat">Can vanish / change terms</div><div class="no">Anytime</div><div class="yes">It's yours</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ TECH / HOW IT RUNS ============================ -->
+<section id="tech" class="tech feature">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="idx">14 · Under the hood</span>
+      <h2 class="section-h">A small, honest stack.</h2>
+      <p class="lede">A thin Flask backend fetches and streams the audio; everything else is vanilla JavaScript and the Web Audio API running in your browser. No bundler, no framework, no surprises.</p>
+    </div>
+    <div class="tech-grid reveal d1">
+      <div class="chip"><div class="t">BACKEND</div><h4>Flask + yt-dlp</h4><p>A tiny app factory fetches the track and streams it to the browser with HTTP range requests.</p></div>
+      <div class="chip"><div class="t">WAVEFORM</div><h4>WaveSurfer.js v7</h4><p>Vendored locally (no CDN) for the waveform, timeline and loop regions, so it works offline.</p></div>
+      <div class="chip"><div class="t">AUDIO</div><h4>Web Audio API</h4><p>A live graph powers pitch shift, channel isolation, EQ, the metronome, drone and note detection.</p></div>
+      <div class="chip"><div class="t">FFMPEG</div><h4>Bundled</h4><p>A bundled ffmpeg ships with the app, so there's nothing to install system-wide.</p></div>
+      <div class="chip"><div class="t">STORAGE</div><h4>localStorage</h4><p>Setlists, practice logs, goals and theme: all client-side, all on your machine.</p></div>
+    </div>
+    <div class="reveal d2" style="margin-top:46px;">
+      <div class="codeline"><span class="c"># one command, then your browser opens</span></div>
+      <div class="codeline" style="margin-top:12px;"><span class="p">▸</span> run.bat <span class="c">or</span> <span class="p">▸</span> python app.py <span class="c"># http://localhost:5000</span></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================ FOOTER / CTA ============================ -->
+<footer>
+  <div class="wrap">
+    <div class="cta reveal">
+      <img class="foot-logo" src="images/logo-mark.png" alt="Loopretto logo" />
+      <span class="tag" style="justify-content:center;">Loopretto · transcribe by ear</span>
+      <h2 style="margin-top:18px;">Slow it down. <span class="serif-accent" style="color:var(--amber);">Get it down.</span></h2>
+      <p class="lede">A transcription room that fits in a browser tab and answers to no one but you. Loop that difficult part, slow it down, hear every note, and get it down, privately, on your own machine.</p>
+
+      <div class="links-row">
+        <a class="link-btn web" href="https://cristiangabriel.dev" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9.2"/><ellipse cx="12" cy="12" rx="4.2" ry="9.2"/><path d="M3 12h18M4 7.5h16M4 16.5h16"/></g></svg>
+          cristiangabriel.dev
+        </a>
+        <a class="link-btn gh" href="https://github.com/cristiangabriel88/loopretto" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.05.78 2.12v3.14c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5Z"/></svg>
+          View source on GitHub
+        </a>
+        <a class="link-btn coffee" href="https://ko-fi.com/s/1bd08ce885" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 9h13v5a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V9Z"/><path d="M17 10h2.2a2.3 2.3 0 0 1 0 4.6H17"/><path d="M8 3c-.6.8-.6 1.7 0 2.5M11.5 3c-.6.8-.6 1.7 0 2.5"/></g></svg>
+          Buy me a coffee
+        </a>
+      </div>
+
+      <div class="hero-actions" style="justify-content:center;margin-top:30px;">
+        <a class="btn ghost" href="#top">Back to top ↑</a>
+        <span class="local-badge"><span class="dot"></span>Runs 100% locally · localhost:5000</span>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <div class="l">
+        <span>© Loopretto</span>
+        <span>Free &amp; open source</span>
+        <span>Local-only by design</span>
+        <span>No accounts · No cloud · No tracking</span>
+      </div>
+      <div>Made by <a href="https://cristiangabriel.dev" target="_blank" rel="noopener" style="color:var(--amber);">Cristian Gabriel</a> · for musicians who transcribe by ear.</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---- nav shadow on scroll ---- */
+const nav = document.getElementById('topnav');
+const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 24);
+onScroll(); window.addEventListener('scroll', onScroll, { passive:true });
+
+/* ---- hero equalizer bars ---- */
+const eq = document.getElementById('eq');
+if (eq){
+  const N = 28;
+  for (let i=0;i<N;i++){
+    const b = document.createElement('span');
+    const d = (Math.random()*1.2).toFixed(2);
+    const dur = (0.9 + Math.random()*1.1).toFixed(2);
+    b.style.animationDelay = `-${d}s`;
+    b.style.animationDuration = `${dur}s`;
+    b.style.height = (15 + Math.random()*70) + '%';
+    eq.appendChild(b);
+  }
+}
+
+/* ---- duplicate marquee for seamless loop ---- */
+const mq = document.getElementById('marquee');
+if (mq){ mq.innerHTML += mq.innerHTML; }
+
+/* ---- scroll reveals ---- */
+const io = new IntersectionObserver((entries)=>{
+  for (const e of entries){
+    if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+  }
+},{ threshold:0.14, rootMargin:'0px 0px -8% 0px' });
+document.querySelectorAll('.reveal').forEach(el=>{
+  if (!el.classList.contains('in')) io.observe(el);
+});
+</script>
+</body>
+</html>
